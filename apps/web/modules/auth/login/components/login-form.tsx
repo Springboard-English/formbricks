@@ -16,6 +16,7 @@ import { getOAuthErrorVariant } from "@/modules/auth/lib/oauth-error";
 import { SSOOptions } from "@/modules/ee/sso/components/sso-options";
 import { TwoFactor } from "@/modules/ee/two-factor-auth/components/two-factor";
 import { TwoFactorBackup } from "@/modules/ee/two-factor-auth/components/two-factor-backup";
+import { SourceCodeLink } from "@/modules/springboard/components/source-code-link";
 import { SpringboardSignInButton } from "@/modules/springboard/components/springboard-sign-in-button";
 import { Alert, AlertDescription, AlertTitle } from "@/modules/ui/components/alert";
 import { Button } from "@/modules/ui/components/button";
@@ -356,6 +357,11 @@ export const LoginForm = ({
               source="signin"
             />
           )}
+        </div>
+
+        {/* Springboard fork: AGPL-3.0 §13 source offer. */}
+        <div className="mt-6 text-center text-xs text-slate-500">
+          <SourceCodeLink />
         </div>
 
         {publicSignUpEnabled && !totpLogin && isMultiOrgEnabled && (

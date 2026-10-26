@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
+import { SourceCodeLink } from "@/modules/springboard/components/source-code-link";
 
 interface LegalFooterProps {
   IMPRINT_URL?: string;
@@ -28,7 +29,7 @@ export const LegalFooter = ({
   backdropColor,
 }: Readonly<LegalFooterProps>) => {
   const { t } = useTranslation();
-  if (!IMPRINT_URL && !PRIVACY_URL && !TERMS_URL && !IS_FORMBRICKS_CLOUD) return null;
+  // Springboard fork: always rendered, because the "Source code" link (AGPL-3.0 §13) is always shown.
 
   return (
     <footer className={cn("z-1500 w-full", isInFlow ? "shrink-0 py-4" : "absolute bottom-0 h-10")}>
@@ -67,6 +68,10 @@ export const LegalFooter = ({
               {t("common.report_survey")}
             </Link>
           )}
+          {(IMPRINT_URL || PRIVACY_URL || TERMS_URL || IS_FORMBRICKS_CLOUD) && (
+            <span className="px-2">|</span>
+          )}
+          <SourceCodeLink />
         </div>
       </div>
     </footer>

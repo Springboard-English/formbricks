@@ -1,0 +1,98 @@
+name: Springboard Image
+
+# Springboard fork (SPRINGBOARD.md): builds the upstream apps/web/Dockerfile unchanged and pushes
+# ghcr.io/springboard-english/formbricks:<tag> when a `6.1.1-sb.<n>` tag is pushed. Nothing else
+# triggers it, and no upstream workflow runs on tag pushes, so a fork tag publishes exactly one image.
+#
+# Runner sizing: the Next.js build inside the Dockerfile runs with NODE_OPTIONS=--max_old_space_size=8192.
+# GitHub's standard `ubuntu-latest` runner for public repositories has 4 vCPUs and 16 GiB of RAM, so
+# the 8 GiB heap fits with headroom; upstream's own "Docker Build Validation" job builds the same
+# Dockerfile on the same runner when Depot is unavailable. Disk is the tighter limit (~14 GiB free), so
+# the preinstalled toolchains this build never uses are removed first, and both are printed for the log.
+
+on:
+  push:
+    tags:
+      - "6.1.1-sb.*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: springboard-image-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and push
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check the tag
+        id: tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$TAG" =~ ^6\.1\.1-sb\.[0-9]+$ ]]; then
+            echo "::error::Tag '$TAG' is not of the form 6.1.1-sb.<n>"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Free disk space and report runner resources
+        run: |
+          set -euo pipefail
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          nproc
+          free -h
+          df -h /
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # No real credentials are needed or used: the build only needs well-formed placeholders, the same
+      # ones upstream's validation build passes, and every runtime value comes from the deployment's env.
+      - name: Build and push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ./apps/web/Dockerfile
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            FORMBRICKS_DEPLOYMENT_ID=${{ github.sha }}
+            FORMBRICKS_BUILD_VARIANT=springboard
+          tags: ghcr.io/springboard-english/formbricks:${{ steps.tag.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/Springboard-English/formbricks
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.tag.outputs.tag }}
+          secrets: |
+            redis_url=redis://localhost:6379
+            hub_api_url=http://localhost:4000
+            hub_api_key=build-time-placeholder
+            cubejs_api_url=http://localhost:4000
+            cubejs_api_secret=build-time-placeholder
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
