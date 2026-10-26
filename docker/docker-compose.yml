@@ -192,6 +192,9 @@ x-environment: &environment
     # SPRINGBOARD_OIDC_ALLOWED_DOMAINS: springboard.vn             # comma list
     # SPRINGBOARD_OIDC_DEFAULT_ROLE: member                         # role for new users without an invite
     # SPRINGBOARD_OIDC_STAFF_ACCOUNT_TYPES:                         # comma list; REQUIRED, every sign-in is refused while unset
+    # Offboarding: POST /api/springboard/offboard and GET /api/springboard/users, Bearer <secret>. Off when unset.
+    # SPRINGBOARD_OFFBOARD_SECRET:                                  # >= 32 chars, same value on the API side
+    # SPRINGBOARD_SESSION_HOURS: 12                                 # session lifetime; 12 by default once Springboard sign-in is on
 
     ########################################## OPTIONAL (THIRD PARTY INTEGRATIONS) ###########################################
 

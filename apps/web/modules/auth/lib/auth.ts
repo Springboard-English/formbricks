@@ -30,6 +30,7 @@ import { ssoDatabaseHooks, ssoLicenseGateBeforeHandler } from "@/modules/ee/sso/
 import { ssoGenericOAuthConfig, ssoSocialProviders } from "@/modules/ee/sso/lib/better-auth-providers";
 import { ssoRecoverySignInPlugin } from "@/modules/ee/sso/lib/better-auth-recovery-signin";
 import { withSpringboardDatabaseHooks } from "@/modules/springboard/lib/auth-hooks";
+import { getSpringboardSessionMaxAgeSeconds } from "@/modules/springboard/lib/runtime-config";
 import { getSpringboardGenericOAuthConfig } from "@/modules/springboard/lib/staff-provider";
 import { runAfterAuthHooks } from "./after-auth-hooks";
 import { EMAIL_VERIFICATION_TTL_SECONDS, USE_SECURE_COOKIES } from "./auth-cookies";
@@ -265,7 +266,9 @@ export const auth = betterAuth({
   },
 
   session: {
-    expiresIn: SESSION_MAX_AGE, // keep the current 1-day session TTL (parity with the legacy SESSION_MAX_AGE)
+    // keep the current 1-day session TTL (parity with the legacy SESSION_MAX_AGE). Springboard fork:
+    // SPRINGBOARD_SESSION_HOURS, 12h by default once Springboard sign-in is on; unchanged otherwise.
+    expiresIn: getSpringboardSessionMaxAgeSeconds() ?? SESSION_MAX_AGE,
     updateAge: DAY_IN_SECONDS,
     freshAge: DAY_IN_SECONDS, // require recent auth for sensitive ops; never 0
     // REQUIRED with secondaryStorage — otherwise no `session` DB rows, which the forward-auth
