@@ -14,6 +14,7 @@ import { resolveClientApiIds } from "@/lib/utils/resolve-client-id";
 import { formatValidationErrorsForV1Api, validateResponseData } from "@/modules/api/lib/validation";
 import { validateOtherOptionLengthForMultipleChoice } from "@/modules/api/v2/lib/element";
 import { createQuotaFullObject } from "@/modules/ee/quotas/lib/helpers";
+import { enforceSpringboardRespondentGateOnUpdate } from "@/modules/springboard/lib/respondent-gate";
 import { validateClientFileUploads } from "@/modules/storage/utils";
 import { verifyLinkSurveyPinToken } from "@/modules/survey/link/lib/pin-token";
 import { VERIFIED_EMAIL_RESPONSE_KEY } from "@/modules/survey/link/lib/verify-email-gate";
@@ -231,6 +232,18 @@ export const putResponseHandler = async ({
         surveyId: survey.id,
       }),
     };
+  }
+
+  // Springboard fork: a partial response is finished only by the respondent it was created for, and
+  // the identity it carries cannot be rewritten.
+  const springboardGateResponse = enforceSpringboardRespondentGateOnUpdate({
+    survey,
+    existingResponseData: existingResponse.data,
+    updateData: responseUpdateInput.data,
+    cookieHeader: req.headers.get("cookie"),
+  });
+  if (springboardGateResponse) {
+    return { response: springboardGateResponse };
   }
 
   // The update payload carries no `meta`, so there is no token to re-verify here. The address was

@@ -20,6 +20,11 @@ import { TSurvey } from "@formbricks/types/surveys/types";
 import { TTag } from "@formbricks/types/tags";
 import { getIsQuotasEnabled } from "@/modules/ee/license-check/lib/utils";
 import { reduceQuotaLimits } from "@/modules/ee/quotas/lib/quotas";
+import {
+  SPRINGBOARD_EXPORT_HEADERS,
+  hasVerifiedRespondentEmail,
+  isSpringboardSignInRequired,
+} from "@/modules/springboard/lib/respondent-survey";
 import { deleteResponseFileUrls } from "@/modules/storage/lib/delete-response-files";
 import {
   collectResponseFileUrls,
@@ -495,8 +500,11 @@ export const getResponseDownloadFile = async (
       ...userAttributes.map((attribute) => `person.${attribute}`),
     ];
 
-    if (survey.isVerifyEmailEnabled) {
+    if (hasVerifiedRespondentEmail(survey)) {
       headers.push("Verified Email");
+    }
+    if (isSpringboardSignInRequired(survey)) {
+      headers.push(...SPRINGBOARD_EXPORT_HEADERS);
     }
     const resolvedResponses = responses.map((r) => ({ ...r, data: resolveStorageUrlsInObject(r.data) }));
     const jsonData = getResponsesJson(

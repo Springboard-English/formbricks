@@ -21,6 +21,7 @@ import { formatDateTimeForDisplay } from "@/lib/utils/datetime";
 import { recallToHeadline } from "@/lib/utils/recall";
 import { RenderResponse } from "@/modules/analysis/components/SingleResponseCard/components/RenderResponse";
 import { displayEmbeddedValue } from "@/modules/embedded-data/lib/value-display";
+import { hasVerifiedRespondentEmail } from "@/modules/springboard/lib/respondent-survey";
 import { getElementsFromBlocks } from "@/modules/survey/lib/client-utils";
 import { VARIABLES_ICON_MAP, getElementIconMap } from "@/modules/survey/lib/elements";
 import { getSelectionColumn } from "@/modules/ui/components/data-table";
@@ -452,7 +453,7 @@ export const generateResponseTableColumns = (
     dateColumn,
     ...(showQuotasColumn ? [quotasColumn] : []),
     statusColumn,
-    ...(survey.isVerifyEmailEnabled ? [verifiedEmailColumn] : []),
+    ...(hasVerifiedRespondentEmail(survey) ? [verifiedEmailColumn] : []),
     ...elementColumns,
     ...variableColumns,
     ...hiddenFieldColumns,

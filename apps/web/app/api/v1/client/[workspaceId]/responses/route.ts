@@ -25,6 +25,7 @@ import { formatValidationErrorsForV1Api, validateResponseData } from "@/modules/
 import { verifyResponseRecaptcha } from "@/modules/api/lib/verify-response-recaptcha";
 import { getIsContactsEnabled } from "@/modules/ee/license-check/lib/utils";
 import { createQuotaFullObject } from "@/modules/ee/quotas/lib/helpers";
+import { enforceSpringboardRespondentGate } from "@/modules/springboard/lib/respondent-gate";
 import { validateClientFileUploads } from "@/modules/storage/utils";
 import { verifyLinkSurveyPinToken } from "@/modules/survey/link/lib/pin-token";
 import { enforceVerifiedEmailGate } from "@/modules/survey/link/lib/verify-email-gate";
@@ -180,6 +181,16 @@ export const POST = withV1ApiWrapper({
     });
     if (verifiedEmailErrorResponse) {
       return { response: verifiedEmailErrorResponse };
+    }
+
+    // Springboard fork: the verified respondent identity, from the signed cookie only. Last writer.
+    const springboardGateResponse = enforceSpringboardRespondentGate({
+      survey,
+      responseData: responseInputData.data,
+      cookieHeader: req.headers.get("cookie"),
+    });
+    if (springboardGateResponse) {
+      return { response: springboardGateResponse };
     }
 
     // Same gate the v2 endpoint applies — without it, posting to the v1 URL opts the caller out of the

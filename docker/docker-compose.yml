@@ -195,6 +195,11 @@ x-environment: &environment
     # Offboarding: POST /api/springboard/offboard and GET /api/springboard/users, Bearer <secret>. Off when unset.
     # SPRINGBOARD_OFFBOARD_SECRET:                                  # >= 32 chars, same value on the API side
     # SPRINGBOARD_SESSION_HOURS: 12                                 # session lifetime; 12 by default once Springboard sign-in is on
+    # Respondent sign-in for link surveys ("Sign in with Springboard to answer"), on the separate RESPONDENT client.
+    # Needs SPRINGBOARD_OIDC_ISSUER too. Callback to register at Hydra: <PUBLIC_URL or WEBAPP_URL>/api/springboard/respondent/callback
+    # SPRINGBOARD_RESPONDENT_CLIENT_ID:                             # must differ from SPRINGBOARD_OIDC_CLIENT_ID
+    # SPRINGBOARD_RESPONDENT_CLIENT_SECRET:
+    # SPRINGBOARD_RESPONDENT_COOKIE_SECRET:                         # >= 32 chars, signs the 2-hour respondent cookie
 
     ########################################## OPTIONAL (THIRD PARTY INTEGRATIONS) ###########################################
 

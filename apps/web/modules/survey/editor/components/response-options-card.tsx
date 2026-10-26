@@ -8,6 +8,7 @@ import { Trans, useTranslation } from "react-i18next";
 import { TSurvey } from "@formbricks/types/surveys/types";
 import { TUserLocale } from "@formbricks/types/user";
 import { cn } from "@/lib/cn";
+import { SpringboardSignInToggle } from "@/modules/springboard/components/springboard-sign-in-toggle";
 import {
   type TSurveySchedulingConfig,
   getSurveySchedulingTimeLabel,
@@ -28,6 +29,7 @@ interface ResponseOptionsCardProps {
   setLocalSurvey: (survey: TSurvey | ((prev: TSurvey) => TSurvey)) => void;
   finishedResponseCount: number;
   isSpamProtectionAllowed: boolean;
+  isSpringboardSignInAvailable?: boolean;
   surveySchedulingConfig: TSurveySchedulingConfig;
   locale: TUserLocale;
 }
@@ -37,6 +39,7 @@ export const ResponseOptionsCard = ({
   setLocalSurvey,
   finishedResponseCount,
   isSpamProtectionAllowed,
+  isSpringboardSignInAvailable = false,
   surveySchedulingConfig,
   locale,
 }: Readonly<ResponseOptionsCardProps>) => {
@@ -522,6 +525,13 @@ export const ResponseOptionsCard = ({
                 onToggle={handleVerifyEmailToogle}
                 title={t("workspace.surveys.edit.verify_email_before_submission")}
                 description={t("workspace.surveys.edit.verify_email_before_submission_description")}
+              />
+
+              {/* Springboard fork: "Sign in with Springboard to answer" */}
+              <SpringboardSignInToggle
+                localSurvey={localSurvey}
+                setLocalSurvey={setLocalSurvey}
+                isAvailable={isSpringboardSignInAvailable}
               />
 
               {/* Protect Survey with Pin */}
