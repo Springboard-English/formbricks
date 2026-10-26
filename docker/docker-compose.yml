@@ -200,6 +200,8 @@ x-environment: &environment
     # SPRINGBOARD_RESPONDENT_CLIENT_ID:                             # must differ from SPRINGBOARD_OIDC_CLIENT_ID
     # SPRINGBOARD_RESPONDENT_CLIENT_SECRET:
     # SPRINGBOARD_RESPONDENT_COOKIE_SECRET:                         # >= 32 chars, signs the 2-hour respondent cookie
+    # Hide "Add new workspace" and refuse creating a second workspace on the server. Not a licence limit.
+    # SPRINGBOARD_SINGLE_WORKSPACE: 1
 
     ########################################## OPTIONAL (THIRD PARTY INTEGRATIONS) ###########################################
 

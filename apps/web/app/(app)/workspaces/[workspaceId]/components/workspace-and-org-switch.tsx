@@ -21,6 +21,8 @@ interface WorkspaceAndOrgSwitchProps {
   // there is no current workspace on those pages, so the breadcrumb must not claim one. The
   // organization breadcrumb still receives the resolved workspace id for its own menu.
   showWorkspaceBreadcrumb?: boolean;
+  /** Springboard fork: SPRINGBOARD_SINGLE_WORKSPACE=1 hides "Add new workspace". */
+  isWorkspaceCreationLocked?: boolean;
 }
 
 export const WorkspaceAndOrgSwitch = ({
@@ -37,6 +39,7 @@ export const WorkspaceAndOrgSwitch = ({
   isAccessControlAllowed,
   isMembershipPending,
   showWorkspaceBreadcrumb = true,
+  isWorkspaceCreationLocked = false,
 }: Readonly<WorkspaceAndOrgSwitchProps>) => {
   // Keep this as the id itself rather than a boolean: rendering the workspace crumb narrows it to a
   // defined string, which a separate boolean flag would not do.
@@ -65,6 +68,7 @@ export const WorkspaceAndOrgSwitch = ({
             isAccessControlAllowed={isAccessControlAllowed}
             isEnvironmentBreadcrumbVisible={false}
             isMembershipPending={isMembershipPending}
+            isWorkspaceCreationLocked={isWorkspaceCreationLocked}
           />
         )}
       </BreadcrumbList>
