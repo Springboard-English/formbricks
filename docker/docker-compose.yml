@@ -183,6 +183,16 @@ x-environment: &environment
     # Set the below to SAML Provider if you want to enable SAML
     # SAML_DATABASE_URL: "postgresql://<user>:<password>@postgres:5432/formbricks-saml?sslmode=disable"
 
+    # Springboard fork (see SPRINGBOARD.md). "Sign in with Springboard" against Springboard's Ory Hydra,
+    # using the STAFF client. Off unless the first three are set. Callback to register at Hydra:
+    #   <WEBAPP_URL>/api/auth/oauth2/callback/springboard
+    # SPRINGBOARD_OIDC_ISSUER: https://auth.springboard.vn          # dev: https://auth.springboard.vn/dev
+    # SPRINGBOARD_OIDC_CLIENT_ID:
+    # SPRINGBOARD_OIDC_CLIENT_SECRET:
+    # SPRINGBOARD_OIDC_ALLOWED_DOMAINS: springboard.vn             # comma list
+    # SPRINGBOARD_OIDC_DEFAULT_ROLE: member                         # role for new users without an invite
+    # SPRINGBOARD_OIDC_STAFF_ACCOUNT_TYPES:                         # comma list; REQUIRED, every sign-in is refused while unset
+
     ########################################## OPTIONAL (THIRD PARTY INTEGRATIONS) ###########################################
 
     # Oauth credentials for Notion Integration

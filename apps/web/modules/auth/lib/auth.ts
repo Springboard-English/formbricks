@@ -29,6 +29,8 @@ import {
 import { ssoDatabaseHooks, ssoLicenseGateBeforeHandler } from "@/modules/ee/sso/lib/better-auth-hooks";
 import { ssoGenericOAuthConfig, ssoSocialProviders } from "@/modules/ee/sso/lib/better-auth-providers";
 import { ssoRecoverySignInPlugin } from "@/modules/ee/sso/lib/better-auth-recovery-signin";
+import { withSpringboardDatabaseHooks } from "@/modules/springboard/lib/auth-hooks";
+import { getSpringboardGenericOAuthConfig } from "@/modules/springboard/lib/staff-provider";
 import { runAfterAuthHooks } from "./after-auth-hooks";
 import { EMAIL_VERIFICATION_TTL_SECONDS, USE_SECURE_COOKIES } from "./auth-cookies";
 import { rejectInactiveUserOnSessionCreate } from "./better-auth-active-user-gate";
@@ -322,7 +324,8 @@ export const auth = betterAuth({
   // deactivated users before a session is created — parity with authOptions, covers every sign-in
   // path) with the Phase 7 `signedIn` success audit.
   databaseHooks: {
-    ...ssoDatabaseHooks,
+    // Springboard fork: only `user.create.before` is wrapped, and only for the `springboard` callback.
+    ...withSpringboardDatabaseHooks(ssoDatabaseHooks),
     session: {
       create: {
         before: rejectInactiveUserOnSessionCreate,
@@ -456,7 +459,8 @@ export const auth = betterAuth({
     oauthProvider(getMcpOauthProviderOptions()),
     // SSO via generic OAuth (Azure/OIDC + the BoxyHQ SAML bridge); empty config when no license or
     // providers are configured. The account-linking/provisioning hooks are a separate reviewed pass.
-    genericOAuth({ config: ssoGenericOAuthConfig }),
+    // Springboard fork: "Sign in with Springboard" is appended; `[]` when it is not configured.
+    genericOAuth({ config: [...ssoGenericOAuthConfig, ...getSpringboardGenericOAuthConfig()] }),
     // SSO-recovery magic-link sign-in — the BA replacement for the "token" provider's sso_recovery
     // path (recovery-scoped, not a general magic-link). See better-auth-recovery-signin.ts.
     ssoRecoverySignInPlugin,

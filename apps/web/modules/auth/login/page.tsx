@@ -15,6 +15,7 @@ import {
 } from "@/modules/auth/lib/callback-url";
 import { getIsMultiOrgEnabled } from "@/modules/ee/license-check/lib/utils";
 import { getSsoAvailability, toSsoFormProps } from "@/modules/ee/sso/lib/sso-availability";
+import { getSpringboardStaffConfig } from "@/modules/springboard/lib/runtime-config";
 import { LoginForm } from "./components/login-form";
 
 export const metadata: Metadata = {
@@ -60,6 +61,7 @@ export const LoginPage = async ({
         inviteToken={inviteToken}
         resolvedCallbackPath={resolvedCallbackPath}
         resolvedCallbackUrl={resolvedCallbackUrl}
+        springboardSignInEnabled={getSpringboardStaffConfig() !== null}
       />
     </FormWrapper>
   );

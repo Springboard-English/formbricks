@@ -10,6 +10,7 @@ import {
   warnOnAuthSecretRisks,
 } from "@/lib/env";
 import { tagRequestErrorWithUser } from "@/lib/sentry/request-error-user";
+import { assertSpringboardRuntimeConfiguration } from "@/modules/springboard/lib/runtime-config";
 
 export const onRequestError: Instrumentation.onRequestError = async (...args) => {
   const [error, request] = args;
@@ -41,6 +42,7 @@ export const register = async () => {
       assertAuthzedRuntimeConfiguration();
       assertAuthRuntimeConfiguration();
       warnOnAuthSecretRisks();
+      assertSpringboardRuntimeConfiguration();
     }
 
     // Load OpenTelemetry instrumentation when Prometheus metrics or OTLP export is enabled

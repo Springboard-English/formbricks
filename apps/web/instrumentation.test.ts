@@ -16,6 +16,13 @@ vi.mock("@/lib/env", () => ({
   warnOnAuthSecretRisks: mockWarnOnAuthSecretRisks,
 }));
 
+const mockAssertSpringboardRuntimeConfiguration = vi.fn();
+
+// Springboard fork: the fork's own startup check (modules/springboard/lib/runtime-config.ts).
+vi.mock("@/modules/springboard/lib/runtime-config", () => ({
+  assertSpringboardRuntimeConfiguration: mockAssertSpringboardRuntimeConfiguration,
+}));
+
 const mockCaptureRequestError = vi.fn();
 const mockGetClient = vi.fn();
 const mockAddEventProcessor = vi.fn();
@@ -130,6 +137,7 @@ describe("instrumentation register", () => {
 
     expect(mockAssertAuthRuntimeConfiguration).toHaveBeenCalledTimes(1);
     expect(mockWarnOnAuthSecretRisks).toHaveBeenCalledTimes(1);
+    expect(mockAssertSpringboardRuntimeConfiguration).toHaveBeenCalledTimes(1);
   });
 
   test("skips the auth checks during a production build", async () => {

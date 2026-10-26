@@ -60,6 +60,7 @@
     "last_used": "Last Used",
     "login": {
       "backup_code": "Backup code",
+      "continue_with_springboard": "Sign in with Springboard",
       "create_an_account": "Create an account",
       "email_verified_sign_in_description": "Your email address is confirmed. Sign in to continue. If you did not create this account, reset the password instead.",
       "email_verified_sign_in_title": "Email verified",
@@ -79,6 +80,8 @@
       "oauth_signup_not_allowed_description": "Your identity provider signed you in, but this Formbricks instance is not set up to create new accounts this way. Ask an administrator to invite you, then try again.",
       "oauth_signup_not_allowed_title": "We could not create your account",
       "please_verify_your_email_to_continue": "Please verify your email address. We have sent you a verification link.",
+      "springboard_denied_description": "This Springboard account cannot sign in here. Only active staff accounts with a verified address on an allowed domain can. If you think this is wrong, contact an administrator and quote this code: {code}",
+      "springboard_denied_title": "Springboard sign-in was refused",
       "use_a_backup_code": "Use a backup code"
     },
     "oauth": {
