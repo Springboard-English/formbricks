@@ -23,9 +23,10 @@ Each change is off until its environment variables are set, and is its own commi
 2. **Offboarding.** `POST /api/springboard/offboard` deactivates a user, revokes every session and removes
    their Springboard link; `GET /api/springboard/users` lists active users for daily reconciliation. Sessions
    last 12 hours by default.
-3. **Verified respondent email on link surveys.** A per-survey switch, "Sign in with Springboard to answer"
-   (survey editor → Settings → Response options). Respondents sign in with the separate RESPONDENT client,
-   and every response then carries their verified email, Springboard account key and account type.
+3. **Identified respondents.** On link surveys, a per-survey switch "Sign in with Springboard to answer"
+   (survey editor → Settings → Response options): respondents sign in with the separate RESPONDENT client.
+   On in-app surveys, a respondent pass from Springboard's API. Either way the response carries the
+   Springboard account key, account type and email on file. Core's "Anonymize responses" turns all of it off.
 4. **Single workspace.** "Add new workspace" is hidden and creating a second workspace is refused on the
    server. This is not a licence limit and changes none.
 5. **Source link, this file, and an image build** (`.github/workflows/springboard-image.yml`).
@@ -34,20 +35,22 @@ The MCP server at `/api/mcp` is untouched.
 
 ## Environment variables
 
-| Variable                               | Default          | Purpose                                                                                        |
-| -------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------- |
-| `SPRINGBOARD_OIDC_ISSUER`              | unset (off)      | Hydra issuer. Prod `https://auth.springboard.vn`, dev `https://auth.springboard.vn/dev`.       |
-| `SPRINGBOARD_OIDC_CLIENT_ID`           | unset (off)      | STAFF client id.                                                                               |
-| `SPRINGBOARD_OIDC_CLIENT_SECRET`       | unset (off)      | STAFF client secret.                                                                           |
-| `SPRINGBOARD_OIDC_ALLOWED_DOMAINS`     | `springboard.vn` | Comma list of email domains staff may sign in with (exact match, no subdomains).               |
-| `SPRINGBOARD_OIDC_DEFAULT_ROLE`        | `member`         | Organization role for a new staff user without a pending invite.                               |
-| `SPRINGBOARD_OIDC_STAFF_ACCOUNT_TYPES` | unset            | Comma list of staff `account_type` values. **Required**: every sign-in is refused while unset. |
-| `SPRINGBOARD_SESSION_HOURS`            | `12`             | Session lifetime. Only applies once Springboard sign-in is on, or when set explicitly.         |
-| `SPRINGBOARD_OFFBOARD_SECRET`          | unset (off)      | Bearer secret for the offboarding endpoints, at least 32 characters. Same value on the API.    |
-| `SPRINGBOARD_RESPONDENT_CLIENT_ID`     | unset (off)      | RESPONDENT client id. Must differ from the STAFF client.                                       |
-| `SPRINGBOARD_RESPONDENT_CLIENT_SECRET` | unset (off)      | RESPONDENT client secret.                                                                      |
-| `SPRINGBOARD_RESPONDENT_COOKIE_SECRET` | unset (off)      | Signs the respondent cookie, at least 32 characters.                                           |
-| `SPRINGBOARD_SINGLE_WORKSPACE`         | unset (off)      | `1` hides and blocks creating a second workspace.                                              |
+| Variable                                 | Default          | Purpose                                                                                        |
+| ---------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------- |
+| `SPRINGBOARD_OIDC_ISSUER`                | unset (off)      | Hydra issuer. Prod `https://auth.springboard.vn`, dev `https://auth.springboard.vn/dev`.       |
+| `SPRINGBOARD_OIDC_CLIENT_ID`             | unset (off)      | STAFF client id.                                                                               |
+| `SPRINGBOARD_OIDC_CLIENT_SECRET`         | unset (off)      | STAFF client secret.                                                                           |
+| `SPRINGBOARD_OIDC_ALLOWED_DOMAINS`       | `springboard.vn` | Comma list of email domains staff may sign in with (exact match, no subdomains).               |
+| `SPRINGBOARD_OIDC_DEFAULT_ROLE`          | `member`         | Organization role for a new staff user without a pending invite.                               |
+| `SPRINGBOARD_OIDC_STAFF_ACCOUNT_TYPES`   | unset            | Comma list of staff `account_type` values. **Required**: every sign-in is refused while unset. |
+| `SPRINGBOARD_SESSION_HOURS`              | `12`             | Session lifetime. Only applies once Springboard sign-in is on, or when set explicitly.         |
+| `SPRINGBOARD_OFFBOARD_SECRET`            | unset (off)      | Bearer secret for the offboarding endpoints, at least 32 characters. Same value on the API.    |
+| `SPRINGBOARD_RESPONDENT_CLIENT_ID`       | unset (off)      | RESPONDENT client id. Must differ from the STAFF client.                                       |
+| `SPRINGBOARD_RESPONDENT_CLIENT_SECRET`   | unset (off)      | RESPONDENT client secret.                                                                      |
+| `SPRINGBOARD_RESPONDENT_COOKIE_SECRET`   | unset (off)      | Signs the respondent cookie, at least 32 characters.                                           |
+| `SPRINGBOARD_RESPONDENT_PASS_PUBLIC_KEY` | unset (off)      | PEM public key of the API's JWT signing key; `\n` escapes allowed. Set with the issuer.        |
+| `SPRINGBOARD_RESPONDENT_PASS_ISSUER`     | unset (off)      | The API's issuer, `https://api.springboard.vn`. The audience is this instance's `WEBAPP_URL`.  |
+| `SPRINGBOARD_SINGLE_WORKSPACE`           | unset (off)      | `1` hides and blocks creating a second workspace.                                              |
 
 The container refuses to start on a half-configured feature (for example an issuer without a client secret),
 and logs a warning while `SPRINGBOARD_OIDC_STAFF_ACCOUNT_TYPES` is unset. Hydra clients must use
@@ -111,28 +114,50 @@ whose password lives in Secret Manager, as the only password account:
 - If you do switch to `EMAIL_AUTH_DISABLED=1`, the break-glass procedure is: set it back to `0` on the VM and
   restart the container, sign in as the owner, fix things, set it to `1` again.
 
-## Verified respondent email
+With Springboard sign-in configured and `EMAIL_AUTH_DISABLED=1`, the login page starts "Sign in with
+Springboard" on arrival, so a person with a Hydra session lands straight in. It does not after a sign-out
+(`/auth/login?signed_out=1`, which the core sign-out now goes to), or when the last sign-in was refused, so
+neither loops. The rule is `apps/web/modules/springboard/lib/sso-redirect.ts`.
 
-Respondents (students, parents, staff) are not Formbricks users: this flow never creates a user, account or
-session. The respondent signs in on the RESPONDENT client (scopes `openid email`, PKCE, state and nonce; the
-id_token is verified against the JWKS, `iss`, `aud`, `exp` and `nonce`). The callback sets a two-hour signed
-HttpOnly, Secure, SameSite=Lax cookie bound to that one survey, and returns to the survey with its original
-query string, so single-use links and hidden fields keep working.
+## Identified respondents
 
-The response routes, not the page, are the trust boundary: on every create they read the cookie and write
-`verifiedEmail`, `springboardAccountKey` and `springboardAccountType` into the response, overwriting anything
-the client sent under those names; without a valid cookie they answer 403. A partial response can only be
-finished by the account that started it. No tokens are stored.
+Respondents (students, parents, staff) are not Formbricks users: neither path creates a user, account or
+session. **The identity is the Springboard account** (`sub`), proven by a signed token. The email is the
+address on file: Springboard vouches for it (`email_verified: true`) only for staff mailboxes it created, so
+for students and parents it is recorded as unverified, never refused.
 
-**This makes responses identifiable.** Survey owners who switch it on should say so in the survey's welcome
-card or first question ("Your Springboard email and account are recorded with your answers").
+**Link surveys: sign-in.** The respondent signs in on the RESPONDENT client (scopes `openid email profile`,
+PKCE, state and nonce; the id_token is verified against the JWKS, `iss`, `aud`, `exp` and `nonce`). The
+callback sets a two-hour signed HttpOnly, Secure, SameSite=Lax cookie bound to that one survey, and returns to
+the survey with its original query string, so single-use links and hidden fields keep working.
+
+**In-app surveys: a respondent pass.** The app (Leap) calls Springboard's
+`POST /v2/users/me/respondent-pass` and sends the token as the embedded field `sb_pass`. The pass is RS256,
+lives ten minutes, and must carry `typ: respondent_pass`, the configured issuer and this instance's
+`WEBAPP_URL` as audience. **A survey that wants in-app answers identified declares an ingested embedded field
+named `sb_pass`**, because the ingest contract keeps declared fields only. A missing or invalid pass saves the
+answer without identity; it is never refused.
+
+The response routes, not the page, are the trust boundary: on every create they read the cookie or the pass
+and write `springboardAccountKey`, `springboardAccountType` and `springboardEmail` (plus core's
+`verifiedEmail` when the address is vouched for), overwriting anything the client sent under those names, and
+they always delete `sb_pass`. A survey requiring sign-in answers 403 without a valid cookie or pass. A partial
+response can only be finished by the account that started it. No tokens are stored.
+
+**Anonymous surveys.** Core's "Anonymize responses" toggle wins over everything above: no identity is
+recorded, any embedded field ending in `_key`/`_id` (or named `email`) is dropped, and the page URL is cut to
+its origin, because the app's URLs carry test and session ids. With sign-in also required, the sign-in then
+only decides who may answer.
+
+**Identified answers are not anonymous.** Survey owners should say so in the welcome card or first question
+("Your Springboard account and email are recorded with your answers").
 
 ## Rebasing onto a new upstream tag
 
 ```shell
 git fetch upstream --tags
 git switch -c springboard/rebase-<new-tag> springboard/main
-git rebase --onto <new-tag> 6.1.1        # replays the five Springboard commits
+git rebase --onto <new-tag> 6.1.1        # replays the Springboard commits
 pnpm install && pnpm build --filter=@formbricks/web^...
 pnpm --dir apps/web exec vitest run modules/springboard
 pnpm lint && pnpm typecheck && pnpm test
@@ -151,7 +176,8 @@ Expect conflicts only in the upstream files we touch, almost all of them a few l
   `response-options-card.tsx`, the response card/table/export (`SingleResponseCardBody.tsx`,
   `VerifiedEmail.tsx`, `ResponseTableColumns.tsx`, `lib/response/{utils,service}.ts`),
   `link-settings-tab.tsx`, `createWorkspace` and the workspace switcher components, `route-config.ts`,
-  `legacy-sso-callback.ts`, `oauth-error.ts`, `instrumentation.ts`, `scripts/docker/validate-env.ts`.
+  `legacy-sso-callback.ts`, `oauth-error.ts`, `instrumentation.ts`, `scripts/docker/validate-env.ts`,
+  `modules/auth/hooks/use-sign-out.ts` (the `signed_out` redirect) and its test.
 - **Never**: everything under `modules/springboard/**`, `app/api/springboard/**`, this file and the workflow.
 
 Watch Better Auth upgrades in particular: the staff flow relies on genericOAuth's `getUserInfo`,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { authClient } from "@/modules/auth/lib/auth-client";
@@ -9,6 +9,8 @@ import { Button } from "@/modules/ui/components/button";
 interface SpringboardSignInButtonProps {
   /** Where to land after a successful sign-in (already resolved and same-origin). */
   returnToUrl: string;
+  /** Start the sign-in on mount, once (the login page decides when; see sso-redirect.ts). */
+  autoStart?: boolean;
 }
 
 /**
@@ -16,9 +18,13 @@ interface SpringboardSignInButtonProps {
  * any licence: it drives Better Auth's built-in social sign-in for the `springboard` provider.
  * A refusal comes back to `/auth/login?error=springboard_*`, which the login form explains.
  */
-export const SpringboardSignInButton = ({ returnToUrl }: Readonly<SpringboardSignInButtonProps>) => {
+export const SpringboardSignInButton = ({
+  returnToUrl,
+  autoStart = false,
+}: Readonly<SpringboardSignInButtonProps>) => {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
+  const started = useRef(false);
 
   const handleSignIn = async () => {
     setIsLoading(true);
@@ -37,6 +43,15 @@ export const SpringboardSignInButton = ({ returnToUrl }: Readonly<SpringboardSig
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    // A ref, not state: Strict Mode runs effects twice in development, and a second start would race.
+    if (!autoStart || started.current) return;
+    started.current = true;
+    void handleSignIn();
+    // handleSignIn is recreated each render; starting once on mount is the whole intent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart]);
 
   return (
     <Button

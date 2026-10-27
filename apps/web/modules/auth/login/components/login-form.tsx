@@ -60,6 +60,8 @@ interface LoginFormProps {
   resolvedCallbackUrl: string;
   /** Springboard fork: show "Sign in with Springboard" (staff OIDC client configured). */
   springboardSignInEnabled?: boolean;
+  /** Springboard fork: start that sign-in on arrival (sso-redirect.ts decides when). */
+  springboardAutoStart?: boolean;
 }
 
 export const LoginForm = ({
@@ -81,6 +83,7 @@ export const LoginForm = ({
   resolvedCallbackPath,
   resolvedCallbackUrl,
   springboardSignInEnabled = false,
+  springboardAutoStart = false,
 }: Readonly<LoginFormProps>) => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -344,7 +347,9 @@ export const LoginForm = ({
               </Button>
             )}
           </form>
-          {springboardSignInEnabled && <SpringboardSignInButton returnToUrl={resolvedCallbackUrl} />}
+          {springboardSignInEnabled && (
+            <SpringboardSignInButton returnToUrl={resolvedCallbackUrl} autoStart={springboardAutoStart} />
+          )}
           {isSsoEnabled && (
             <SSOOptions
               googleOAuthEnabled={googleOAuthEnabled}
