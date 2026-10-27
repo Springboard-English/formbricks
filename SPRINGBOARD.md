@@ -48,7 +48,7 @@ The MCP server at `/api/mcp` is untouched.
 | `SPRINGBOARD_RESPONDENT_CLIENT_ID`       | unset (off)      | RESPONDENT client id. Must differ from the STAFF client.                                       |
 | `SPRINGBOARD_RESPONDENT_CLIENT_SECRET`   | unset (off)      | RESPONDENT client secret.                                                                      |
 | `SPRINGBOARD_RESPONDENT_COOKIE_SECRET`   | unset (off)      | Signs the respondent cookie, at least 32 characters.                                           |
-| `SPRINGBOARD_RESPONDENT_PASS_PUBLIC_KEY` | unset (off)      | PEM public key of the API's JWT signing key; `\n` escapes allowed. Set with the issuer.        |
+| `SPRINGBOARD_RESPONDENT_PASS_PUBLIC_KEY` | unset (off)      | PEM public key of the API's respondent pass key (`respondent_pass_private_key[_dev]`), never its JWT key; `\n` escapes allowed. Set with the issuer. |
 | `SPRINGBOARD_RESPONDENT_PASS_ISSUER`     | unset (off)      | The API's issuer, `https://api.springboard.vn`. The audience is this instance's `WEBAPP_URL`.  |
 | `SPRINGBOARD_SINGLE_WORKSPACE`           | unset (off)      | `1` hides and blocks creating a second workspace.                                              |
 
