@@ -107,7 +107,7 @@ describe("respondent callback", () => {
   test("sets the survey-bound identity cookie and returns to the survey with its query string", async () => {
     vi.mocked(completeRespondentCallback).mockResolvedValue({
       ok: true,
-      identity: { email: "student@gmail.com", sub: "sb-42", accountType: "student" },
+      identity: { email: "student@gmail.com", emailVerified: false, sub: "sb-42", accountType: "student" },
     });
 
     const response = await handleRespondentCallback(request());
@@ -123,6 +123,7 @@ describe("respondent callback", () => {
     const value = identityCookie?.split(";")[0].split("=").slice(1).join("=");
     expect(verifyRespondentCookie(value, "survey1", SECRET)).toEqual({
       email: "student@gmail.com",
+      emailVerified: false,
       sub: "sb-42",
       accountType: "student",
     });
@@ -132,11 +133,11 @@ describe("respondent callback", () => {
   });
 
   test("a refused sign-in returns to the survey with the error and no identity cookie", async () => {
-    vi.mocked(completeRespondentCallback).mockResolvedValue({ ok: false, error: "respondent_missing_email" });
+    vi.mocked(completeRespondentCallback).mockResolvedValue({ ok: false, error: "respondent_invalid_token" });
 
     const response = await handleRespondentCallback(request());
 
-    expect(response.headers.get("location")).toContain("springboardError=respondent_missing_email");
+    expect(response.headers.get("location")).toContain("springboardError=respondent_invalid_token");
     expect(
       response.headers.getSetCookie().some((cookie) => cookie.startsWith("sb_respondent_survey1="))
     ).toBe(false);

@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { describe, expect, test } from "vitest";
 import {
   RESPONDENT_COOKIE_MAX_AGE_SECONDS,
@@ -9,7 +10,7 @@ import {
 } from "./respondent-cookie";
 
 const SECRET = "k".repeat(32);
-const identity = { email: "student@gmail.com", sub: "sb-42", accountType: "student" };
+const identity = { email: "student@gmail.com", emailVerified: false, sub: "sb-42", accountType: "student" };
 const NOW = Date.UTC(2026, 9, 26, 12);
 
 describe("respondent cookie", () => {
@@ -62,7 +63,25 @@ describe("respondent cookie", () => {
     expect(verifyRespondentFlowCookie(flow, SECRET, NOW)).toMatchObject({ state: "s" });
   });
 
-  test("carries no token, only the three identity fields", () => {
+  test("a cookie signed before emailVerified existed reads as verified, as it then always was", () => {
+    const { emailVerified: _dropped, ...older } = identity;
+    const body = Buffer.from(
+      JSON.stringify({
+        v: 1,
+        purpose: "identity",
+        sid: "survey1",
+        exp: Math.floor(NOW / 1000) + 60,
+        data: older,
+      })
+    ).toString("base64url");
+    const signature = createHmac("sha256", SECRET).update(body).digest("base64url");
+    expect(verifyRespondentCookie(`${body}.${signature}`, "survey1", SECRET, NOW)).toEqual({
+      ...older,
+      emailVerified: true,
+    });
+  });
+
+  test("carries no token, only the identity fields", () => {
     const cookie = signRespondentCookie(
       { ...identity, idToken: "eyJ...", accessToken: "secret" } as typeof identity,
       "survey1",
@@ -70,7 +89,7 @@ describe("respondent cookie", () => {
       NOW
     );
     const payload = JSON.parse(Buffer.from(cookie.split(".")[0], "base64url").toString());
-    expect(Object.keys(payload.data).sort()).toEqual(["accountType", "email", "sub"]);
+    expect(Object.keys(payload.data).sort()).toEqual(["accountType", "email", "emailVerified", "sub"]);
   });
 
   test("readCookie finds one cookie in a header", () => {

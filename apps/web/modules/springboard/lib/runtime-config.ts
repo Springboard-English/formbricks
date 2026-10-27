@@ -2,11 +2,13 @@ import { logger } from "@formbricks/logger";
 import { env } from "../../../lib/env";
 import { throwEnvValidationError } from "../../../lib/env-validation-error";
 import {
+  type TSpringboardPassConfig,
   type TSpringboardRawEnv,
   type TSpringboardRespondentConfig,
   type TSpringboardStaffConfig,
   getSpringboardEnvWarnings,
   parseOffboardSecret,
+  parsePassConfig,
   parseRespondentConfig,
   parseSessionMaxAgeSeconds,
   parseSingleWorkspace,
@@ -24,6 +26,9 @@ export const getSpringboardStaffConfig = (): TSpringboardStaffConfig | null => p
 
 export const getSpringboardRespondentConfig = (): TSpringboardRespondentConfig | null =>
   parseRespondentConfig(raw());
+
+export const getSpringboardPassConfig = (): TSpringboardPassConfig | null =>
+  parsePassConfig(raw(), env.WEBAPP_URL);
 
 export const getSpringboardSessionMaxAgeSeconds = (): number | null => parseSessionMaxAgeSeconds(raw());
 

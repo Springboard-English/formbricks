@@ -3,6 +3,7 @@ import {
   getDiscoveryUrl,
   getSpringboardEnvWarnings,
   parseList,
+  parsePassConfig,
   parseRespondentConfig,
   parseSessionMaxAgeSeconds,
   parseSingleWorkspace,
@@ -112,6 +113,27 @@ describe("Springboard config", () => {
       SPRINGBOARD_OFFBOARD_SECRET: "short",
     });
     expect(issues).toHaveLength(2);
+  });
+
+  test("respondent passes need key and issuer together, a PEM key, and the instance's own origin", () => {
+    const pem = String.raw`-----BEGIN PUBLIC KEY-----\nMIIB\n-----END PUBLIC KEY-----`;
+    const pass = {
+      SPRINGBOARD_RESPONDENT_PASS_PUBLIC_KEY: pem,
+      SPRINGBOARD_RESPONDENT_PASS_ISSUER: "https://api.springboard.vn/",
+    };
+    expect(parsePassConfig(pass, "https://forms.springboard.vn/")).toEqual({
+      publicKeyPem: "-----BEGIN PUBLIC KEY-----\nMIIB\n-----END PUBLIC KEY-----",
+      issuer: "https://api.springboard.vn",
+      audience: "https://forms.springboard.vn",
+    });
+    expect(parsePassConfig(pass, undefined)).toBeNull();
+    expect(validateSpringboardEnv(pass)).toEqual([]);
+    expect(validateSpringboardEnv({ SPRINGBOARD_RESPONDENT_PASS_PUBLIC_KEY: pem })).toEqual([
+      expect.stringContaining("both"),
+    ]);
+    expect(validateSpringboardEnv({ ...pass, SPRINGBOARD_RESPONDENT_PASS_PUBLIC_KEY: "abc" })).toEqual([
+      expect.stringContaining("PEM"),
+    ]);
   });
 
   test("single-workspace lock is on only for exactly 1", () => {

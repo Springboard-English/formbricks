@@ -183,11 +183,13 @@ export const POST = withV1ApiWrapper({
       return { response: verifiedEmailErrorResponse };
     }
 
-    // Springboard fork: the verified respondent identity, from the signed cookie only. Last writer.
-    const springboardGateResponse = enforceSpringboardRespondentGate({
+    // Springboard fork: the verified respondent identity, from the signed cookie or a respondent
+    // pass only. Last writer; on an anonymized survey it drops identity and cuts the URL instead.
+    const springboardGateResponse = await enforceSpringboardRespondentGate({
       survey,
       responseData: responseInputData.data,
       cookieHeader: req.headers.get("cookie"),
+      meta: responseInputData.meta,
     });
     if (springboardGateResponse) {
       return { response: springboardGateResponse };

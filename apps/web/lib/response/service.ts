@@ -23,7 +23,7 @@ import { reduceQuotaLimits } from "@/modules/ee/quotas/lib/quotas";
 import {
   SPRINGBOARD_EXPORT_HEADERS,
   hasVerifiedRespondentEmail,
-  isSpringboardSignInRequired,
+  recordsSpringboardIdentity,
 } from "@/modules/springboard/lib/respondent-survey";
 import { deleteResponseFileUrls } from "@/modules/storage/lib/delete-response-files";
 import {
@@ -503,7 +503,7 @@ export const getResponseDownloadFile = async (
     if (hasVerifiedRespondentEmail(survey)) {
       headers.push("Verified Email");
     }
-    if (isSpringboardSignInRequired(survey)) {
+    if (recordsSpringboardIdentity(survey)) {
       headers.push(...SPRINGBOARD_EXPORT_HEADERS);
     }
     const resolvedResponses = responses.map((r) => ({ ...r, data: resolveStorageUrlsInObject(r.data) }));

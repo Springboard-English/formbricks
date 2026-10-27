@@ -13,7 +13,8 @@ export const RESPONDENT_FLOW_COOKIE_NAME = "sb_respondent_flow";
 /** One cookie per survey, so signing in for one survey says nothing about another. */
 export const getRespondentCookieName = (surveyId: string): string => `sb_respondent_${surveyId}`;
 
-export type TRespondentIdentity = { email: string; sub: string; accountType: string };
+/** `email` is the address on file ("" when there is none); `emailVerified` says whether Springboard vouches for it. */
+export type TRespondentIdentity = { email: string; emailVerified: boolean; sub: string; accountType: string };
 
 export type TRespondentFlowState = {
   surveyId: string;
@@ -72,7 +73,12 @@ export const signRespondentCookie = (
       purpose: "identity",
       sid: surveyId,
       exp: Math.floor(now / 1000) + RESPONDENT_COOKIE_MAX_AGE_SECONDS,
-      data: { email: identity.email, sub: identity.sub, accountType: identity.accountType },
+      data: {
+        email: identity.email,
+        emailVerified: identity.emailVerified,
+        sub: identity.sub,
+        accountType: identity.accountType,
+      },
     },
     secret
   );
@@ -93,7 +99,8 @@ export const verifyRespondentCookie = (
   ) {
     return null;
   }
-  return data;
+  // A cookie signed before `emailVerified` existed only ever held a verified address.
+  return { ...data, emailVerified: data.emailVerified !== false };
 };
 
 export const signRespondentFlowCookie = (

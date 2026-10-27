@@ -6,22 +6,21 @@ import type { TRespondentFlowState, TRespondentIdentity } from "./respondent-coo
 /**
  * A minimal OpenID Connect authorization-code client for survey respondents, on the RESPONDENT
  * Hydra client. Deliberately separate from Better Auth: respondents (students, parents, staff) are
- * not Formbricks users, so this never creates a user, an account or a session — it only proves an
- * address to a single survey for two hours.
+ * not Formbricks users, so this never creates a user, an account or a session — it only proves a
+ * Springboard account to a single survey for two hours.
  *
  * Written from OpenID Connect Core 1.0 and RFC 7636 (PKCE): `state` binds the callback to this
  * browser, `nonce` binds the id_token to this request, the verifier binds the code to this client.
  */
 
-export const RESPONDENT_SCOPES = "openid email";
+// `profile` carries `account_type`; without it every respondent would read as "unknown".
+export const RESPONDENT_SCOPES = "openid email profile";
 
 export type TRespondentFlowError =
   | "respondent_invalid_state"
   | "respondent_idp_error"
   | "respondent_token_exchange_failed"
-  | "respondent_invalid_token"
-  | "respondent_missing_email"
-  | "respondent_email_unverified";
+  | "respondent_invalid_token";
 
 const randomToken = (): string => randomBytes(32).toString("base64url");
 
@@ -84,20 +83,22 @@ export type TRespondentCallbackResult =
   | { ok: true; identity: TRespondentIdentity }
   | { ok: false; error: TRespondentFlowError };
 
-/** Pull the respondent identity out of verified claims. Fails closed without a verified address. */
+/**
+ * Pull the respondent identity out of verified claims. The identity is the Springboard account
+ * (`sub`), proven by the signed token. The email is the address on file: Springboard marks it
+ * verified only for staff mailboxes it created, so `email_verified: false` is normal for students
+ * and parents and is recorded, never refused.
+ */
 export const identityFromClaims = (
   claims: Record<string, unknown>
 ): { ok: true; identity: TRespondentIdentity } | { ok: false; error: TRespondentFlowError } => {
   const { sub, email, email_verified: emailVerified, account_type: accountType } = claims;
   if (typeof sub !== "string" || !sub) return { ok: false, error: "respondent_invalid_token" };
-  if (typeof email !== "string" || !email.includes("@") || emailVerified === undefined) {
-    return { ok: false, error: "respondent_missing_email" };
-  }
-  if (emailVerified !== true) return { ok: false, error: "respondent_email_unverified" };
   return {
     ok: true,
     identity: {
-      email: email.trim().toLowerCase(),
+      email: typeof email === "string" && email.includes("@") ? email.trim().toLowerCase() : "",
+      emailVerified: emailVerified === true,
       sub,
       accountType: typeof accountType === "string" && accountType ? accountType.toLowerCase() : "unknown",
     },

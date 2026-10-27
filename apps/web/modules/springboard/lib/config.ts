@@ -32,6 +32,8 @@ export type TSpringboardRawEnv = Partial<
     | "SPRINGBOARD_RESPONDENT_CLIENT_ID"
     | "SPRINGBOARD_RESPONDENT_CLIENT_SECRET"
     | "SPRINGBOARD_RESPONDENT_COOKIE_SECRET"
+    | "SPRINGBOARD_RESPONDENT_PASS_PUBLIC_KEY"
+    | "SPRINGBOARD_RESPONDENT_PASS_ISSUER"
     | "SPRINGBOARD_SINGLE_WORKSPACE",
     string | undefined
   >
@@ -52,6 +54,14 @@ export type TSpringboardRespondentConfig = {
   clientId: string;
   clientSecret: string;
   cookieSecret: string;
+};
+
+/** How to verify a respondent pass from Springboard's API: its RS256 public key, issuer and audience. */
+export type TSpringboardPassConfig = {
+  publicKeyPem: string;
+  issuer: string;
+  /** This instance's own origin (WEBAPP_URL): a pass minted for anywhere else is refused. */
+  audience: string;
 };
 
 const clean = (value: string | undefined): string | undefined => {
@@ -118,6 +128,21 @@ export const parseRespondentConfig = (raw: TSpringboardRawEnv): TSpringboardResp
   const cookieSecret = clean(raw.SPRINGBOARD_RESPONDENT_COOKIE_SECRET);
   if (!issuer || !clientId || !clientSecret || !cookieSecret) return null;
   return { issuer: normalizeIssuer(issuer), clientId, clientSecret, cookieSecret };
+};
+
+/**
+ * `null` = respondent passes are ignored. A PEM's `\n` escapes are unfolded, because a multi-line key
+ * usually arrives through a one-line env var.
+ */
+export const parsePassConfig = (
+  raw: TSpringboardRawEnv,
+  webappUrl: string | undefined
+): TSpringboardPassConfig | null => {
+  const publicKeyPem = clean(raw.SPRINGBOARD_RESPONDENT_PASS_PUBLIC_KEY)?.replaceAll(String.raw`\n`, "\n");
+  const issuer = clean(raw.SPRINGBOARD_RESPONDENT_PASS_ISSUER);
+  const audience = clean(webappUrl);
+  if (!publicKeyPem || !issuer || !audience) return null;
+  return { publicKeyPem, issuer: normalizeIssuer(issuer), audience: normalizeIssuer(audience) };
 };
 
 /** Session lifetime in seconds, or `null` to keep the core default (`SESSION_MAX_AGE`). */
@@ -196,6 +221,17 @@ export const validateSpringboardEnv = (raw: TSpringboardRawEnv): string[] => {
     if (cookieSecret && cookieSecret.length < MIN_SECRET_LENGTH) {
       issues.push(`SPRINGBOARD_RESPONDENT_COOKIE_SECRET must be at least ${MIN_SECRET_LENGTH} characters.`);
     }
+  }
+
+  const passKey = clean(raw.SPRINGBOARD_RESPONDENT_PASS_PUBLIC_KEY);
+  const passIssuer = clean(raw.SPRINGBOARD_RESPONDENT_PASS_ISSUER);
+  if (Boolean(passKey) !== Boolean(passIssuer)) {
+    issues.push(
+      "Springboard respondent passes need both SPRINGBOARD_RESPONDENT_PASS_PUBLIC_KEY and SPRINGBOARD_RESPONDENT_PASS_ISSUER."
+    );
+  }
+  if (passKey && !passKey.includes("BEGIN PUBLIC KEY")) {
+    issues.push("SPRINGBOARD_RESPONDENT_PASS_PUBLIC_KEY must be a PEM public key (BEGIN PUBLIC KEY).");
   }
 
   const singleWorkspace = clean(raw.SPRINGBOARD_SINGLE_WORKSPACE);

@@ -16,7 +16,10 @@ import { buildServerEmbeddedValues } from "@/lib/surveyLogic/utils";
 import { getSurveyDateFormatMap } from "@/lib/utils/date-display";
 import { parseRecallInfo } from "@/lib/utils/recall";
 import { ResponseCardQuotas } from "@/modules/ee/quotas/components/single-response-card-quotas";
-import { hasVerifiedRespondentEmail } from "@/modules/springboard/lib/respondent-survey";
+import {
+  SPRINGBOARD_RESPONSE_KEYS,
+  hasVerifiedRespondentEmail,
+} from "@/modules/springboard/lib/respondent-survey";
 import { getElementsFromBlocks } from "@/modules/survey/lib/client-utils";
 import { isValidValue, splitRecallHighlights } from "../util";
 import { ElementSkip } from "./ElementSkip";
@@ -83,9 +86,10 @@ export const SingleResponseCardBody = ({
         />
       )}
       <div className="space-y-6">
-        {hasVerifiedRespondentEmail(survey) && response.data["verifiedEmail"] && (
-          <VerifiedEmail responseData={response.data} />
-        )}
+        {hasVerifiedRespondentEmail(survey) &&
+          (response.data["verifiedEmail"] || response.data[SPRINGBOARD_RESPONSE_KEYS.accountKey]) && (
+            <VerifiedEmail responseData={response.data} />
+          )}
         {elements.map((question) => {
           // Skip CTA elements without external buttons only if they have no response data
           // This preserves historical data from when buttonExternal was true

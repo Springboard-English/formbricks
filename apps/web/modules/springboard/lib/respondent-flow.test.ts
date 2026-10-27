@@ -69,7 +69,7 @@ const callback = (fetchImpl: typeof fetch, query = "code=c1&state=state-1", flow
   });
 
 describe("respondent authorization request", () => {
-  test("uses the respondent client, openid email, state, nonce and S256 PKCE", async () => {
+  test("uses the respondent client, openid email profile, state, nonce and S256 PKCE", async () => {
     const { authorizationUrl, flow: created } = await buildRespondentAuthorization({
       config,
       metadata,
@@ -83,7 +83,7 @@ describe("respondent authorization request", () => {
       response_type: "code",
       client_id: "respondent-client",
       redirect_uri: REDIRECT,
-      scope: "openid email",
+      scope: "openid email profile",
       state: created.state,
       nonce: created.nonce,
       code_challenge: await createPkceChallenge(created.codeVerifier),
@@ -107,12 +107,12 @@ describe("respondent callback", () => {
   test("exchanges the code with PKCE and client_secret_basic, and keeps only the identity", async () => {
     const fetchImpl = tokenEndpoint({
       access_token: "at",
-      id_token: await idToken({ email: "Student@Gmail.com", email_verified: true, account_type: "student" }),
+      id_token: await idToken({ email: "Student@Gmail.com", email_verified: false, account_type: "student" }),
     });
 
     await expect(callback(fetchImpl)).resolves.toEqual({
       ok: true,
-      identity: { email: "student@gmail.com", sub: "sb-42", accountType: "student" },
+      identity: { email: "student@gmail.com", emailVerified: false, sub: "sb-42", accountType: "student" },
     });
     const [url, init] = fetchImpl.mock.calls[0];
     expect(url).toBe(metadata.token_endpoint);
@@ -154,9 +154,12 @@ describe("respondent callback", () => {
     await expect(callback(fetchImpl)).resolves.toEqual({ ok: false, error: "respondent_invalid_token" });
   });
 
-  test("today's sub-only id_token fails closed", async () => {
+  test("a sub-only id_token still proves the account, with no address on file", async () => {
     const fetchImpl = tokenEndpoint({ id_token: await idToken({}) });
-    await expect(callback(fetchImpl)).resolves.toEqual({ ok: false, error: "respondent_missing_email" });
+    await expect(callback(fetchImpl)).resolves.toEqual({
+      ok: true,
+      identity: { email: "", emailVerified: false, sub: "sb-42", accountType: "unknown" },
+    });
   });
 
   test("an IdP error or failed exchange is refused", async () => {
@@ -170,14 +173,28 @@ describe("respondent callback", () => {
 });
 
 describe("identityFromClaims", () => {
-  test("requires a verified address and defaults a missing account type", () => {
+  test("the account is the identity: an unverified address is recorded, not refused", () => {
     expect(identityFromClaims({ sub: "s", email: "a@b.vn", email_verified: false })).toEqual({
-      ok: false,
-      error: "respondent_email_unverified",
-    });
-    expect(identityFromClaims({ sub: "s", email: "a@b.vn", email_verified: true })).toEqual({
       ok: true,
-      identity: { email: "a@b.vn", sub: "s", accountType: "unknown" },
+      identity: { email: "a@b.vn", emailVerified: false, sub: "s", accountType: "unknown" },
+    });
+    expect(
+      identityFromClaims({
+        sub: "s",
+        email: "a@springboard.vn",
+        email_verified: true,
+        account_type: "Employee",
+      })
+    ).toEqual({
+      ok: true,
+      identity: { email: "a@springboard.vn", emailVerified: true, sub: "s", accountType: "employee" },
+    });
+  });
+
+  test("only a missing sub is refused", () => {
+    expect(identityFromClaims({ email: "a@b.vn", email_verified: true })).toEqual({
+      ok: false,
+      error: "respondent_invalid_token",
     });
   });
 });

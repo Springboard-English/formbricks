@@ -263,11 +263,13 @@ export const POST = async (request: Request, context: Context): Promise<Response
       return validationResponse;
     }
 
-    // Springboard fork: the verified respondent identity, from the signed cookie only. Last writer.
-    const springboardGateResponse = enforceSpringboardRespondentGate({
+    // Springboard fork: the verified respondent identity, from the signed cookie or a respondent
+    // pass only. Last writer; on an anonymized survey it drops identity and cuts the URL instead.
+    const springboardGateResponse = await enforceSpringboardRespondentGate({
       survey,
       responseData: responseInputData.data,
       cookieHeader: request.headers.get("cookie"),
+      meta: responseInputData.meta,
     });
     if (springboardGateResponse) {
       return springboardGateResponse;
