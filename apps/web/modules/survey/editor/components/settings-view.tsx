@@ -27,6 +27,7 @@ interface SettingsViewProps {
   membershipRole?: OrganizationRole;
   isUserTargetingAllowed?: boolean;
   isSpamProtectionAllowed: boolean;
+  isSpringboardSignInAvailable?: boolean;
   workspacePermission: TTeamPermission | null;
   isFormbricksCloud: boolean;
   isQuotasAllowed: boolean;
@@ -50,6 +51,7 @@ export const SettingsView = ({
   membershipRole,
   isUserTargetingAllowed = false,
   isSpamProtectionAllowed,
+  isSpringboardSignInAvailable = false,
   isQuotasAllowed,
   workspacePermission,
   isFormbricksCloud,
@@ -117,6 +119,7 @@ export const SettingsView = ({
         setLocalSurvey={setLocalSurvey}
         finishedResponseCount={finishedResponseCount}
         isSpamProtectionAllowed={isSpamProtectionAllowed}
+        isSpringboardSignInAvailable={isSpringboardSignInAvailable}
         surveySchedulingConfig={surveySchedulingConfig}
         locale={locale}
       />

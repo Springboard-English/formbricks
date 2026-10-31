@@ -21,6 +21,7 @@ import { formatValidationErrorsForV1Api, validateResponseData } from "@/modules/
 import { validateOtherOptionLengthForMultipleChoice } from "@/modules/api/v2/lib/element";
 import { getIsContactsEnabled } from "@/modules/ee/license-check/lib/utils";
 import { createQuotaFullObject } from "@/modules/ee/quotas/lib/helpers";
+import { enforceSpringboardRespondentGate } from "@/modules/springboard/lib/respondent-gate";
 import { validateClientFileUploads } from "@/modules/storage/utils";
 import { createResponseWithQuotaEvaluation } from "./lib/response";
 import { TResponseInputV2, ZResponseInputV2 } from "./types/response";
@@ -260,6 +261,18 @@ export const POST = async (request: Request, context: Context): Promise<Response
     const validationResponse = await validateResponseSubmission(workspaceId, responseInputData, survey);
     if (validationResponse) {
       return validationResponse;
+    }
+
+    // Springboard fork: the verified respondent identity, from the signed cookie or a respondent
+    // pass only. Last writer; on an anonymized survey it drops identity and cuts the URL instead.
+    const springboardGateResponse = await enforceSpringboardRespondentGate({
+      survey,
+      responseData: responseInputData.data,
+      cookieHeader: request.headers.get("cookie"),
+      meta: responseInputData.meta,
+    });
+    if (springboardGateResponse) {
+      return springboardGateResponse;
     }
 
     // Same fold as the v1 endpoint (ENG-1147): a scanner's click-time check and the contact's own

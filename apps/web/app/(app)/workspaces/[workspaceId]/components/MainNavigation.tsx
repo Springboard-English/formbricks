@@ -63,6 +63,8 @@ interface NavigationProps {
   // server layout: deriving it here would mean reading `Date.now()` during render, which diverges
   // between the server pass and hydration and then goes stale as the tab sits open (ENG-2366).
   trialDaysRemaining: number | null;
+  /** Springboard fork: SPRINGBOARD_SINGLE_WORKSPACE=1 hides "Add new workspace". */
+  isWorkspaceCreationLocked?: boolean;
 }
 
 /**
@@ -136,6 +138,7 @@ export const MainNavigation = ({
   responseCount,
   isFormbricksSurveysConfigured,
   trialDaysRemaining,
+  isWorkspaceCreationLocked = false,
 }: Readonly<NavigationProps>) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -533,7 +536,7 @@ export const MainNavigation = ({
                         items={workspaceSwitcher.items}
                         selectedId={workspace.id}
                         onSelect={handleWorkspaceChange}>
-                        {isOwnerOrManager && (
+                        {isOwnerOrManager && !isWorkspaceCreationLocked && (
                           <DropdownMenuCheckboxItem
                             onClick={handleWorkspaceCreate}
                             className="w-full cursor-pointer justify-between">

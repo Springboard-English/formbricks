@@ -2,6 +2,7 @@ import { logger } from "@formbricks/logger";
 import { FORMBRICKS_ENVIRONMENT_ID_LS, FORMBRICKS_WORKSPACE_ID_LS } from "@/lib/localStorage";
 import { logSignOutAction } from "@/modules/auth/actions/sign-out";
 import { authClient } from "@/modules/auth/lib/auth-client";
+import { SPRINGBOARD_SIGNED_OUT_PARAM } from "@/modules/springboard/lib/sso-redirect";
 
 interface UseSignOutOptions {
   reason?:
@@ -65,7 +66,9 @@ export const useSignOut = (sessionUser?: SessionUser | null) => {
     // return { url } when the caller passes redirect:false so it can navigate itself. Logout must
     // ALWAYS navigate away even if the BA /sign-out call fails (best-effort + audited above), so
     // swallow+log and fall through to the redirect/return.
-    const url = options?.callbackUrl ?? "/auth/login";
+    // Springboard fork: `signed_out=1` stops the login page from sending the browser straight back
+    // to Springboard sign-in, which would sign it in again from the still-live Hydra session.
+    const url = options?.callbackUrl ?? `/auth/login?${SPRINGBOARD_SIGNED_OUT_PARAM}=1`;
     try {
       // The BA client resolves HTTP failures as { error } rather than throwing, so log both shapes.
       const { error } = await authClient.signOut();

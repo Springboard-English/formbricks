@@ -120,6 +120,9 @@ export const LinkSettingsTab = ({ isReadOnly, locale, isStorageConfigured }: Lin
     };
 
     const updatedSurveyMetadata: TSurveyMetadata = {
+      // Keep keys this form does not edit (Springboard fork: `springboardSignInRequired`), or saving the
+      // link preview would silently switch the survey's sign-in requirement off.
+      ...currentSurveyMetadata,
       title: updatedTitle,
       description: updatedDescription,
       ogImage: data.ogImage || undefined,

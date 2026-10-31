@@ -52,7 +52,7 @@ describe("useSignOut", () => {
       organizationId: "org-1",
     });
     expect(baSignOut).toHaveBeenCalledTimes(1);
-    expect(window.location.href).toBe("/auth/login");
+    expect(window.location.href).toBe("/auth/login?signed_out=1");
   });
 
   test("defaults the reason and uses callbackUrl as the audit redirectUrl + navigation target", async () => {
@@ -93,7 +93,7 @@ describe("useSignOut", () => {
 
     expect(mockedLogSignOut).not.toHaveBeenCalled();
     expect(baSignOut).toHaveBeenCalledTimes(1);
-    expect(window.location.href).toBe("/auth/login");
+    expect(window.location.href).toBe("/auth/login?signed_out=1");
   });
 
   test("skips the audit log after account deletion, when the session is already gone", async () => {
@@ -113,7 +113,7 @@ describe("useSignOut", () => {
 
     expect(loggerError).toHaveBeenCalled();
     expect(baSignOut).toHaveBeenCalledTimes(1);
-    expect(window.location.href).toBe("/auth/login");
+    expect(window.location.href).toBe("/auth/login?signed_out=1");
   });
 
   test("still signs out and redirects when audit logging throws", async () => {
@@ -124,7 +124,7 @@ describe("useSignOut", () => {
 
     expect(loggerError).toHaveBeenCalled();
     expect(baSignOut).toHaveBeenCalledTimes(1);
-    expect(window.location.href).toBe("/auth/login");
+    expect(window.location.href).toBe("/auth/login?signed_out=1");
   });
 
   test("logs and proceeds when Better Auth signOut resolves with an error", async () => {
@@ -134,7 +134,7 @@ describe("useSignOut", () => {
     await signOut();
 
     expect(loggerError).toHaveBeenCalled();
-    expect(window.location.href).toBe("/auth/login");
+    expect(window.location.href).toBe("/auth/login?signed_out=1");
   });
 
   test("logs and still redirects when Better Auth signOut throws", async () => {
@@ -144,6 +144,6 @@ describe("useSignOut", () => {
     await signOut();
 
     expect(loggerError).toHaveBeenCalled();
-    expect(window.location.href).toBe("/auth/login");
+    expect(window.location.href).toBe("/auth/login?signed_out=1");
   });
 });

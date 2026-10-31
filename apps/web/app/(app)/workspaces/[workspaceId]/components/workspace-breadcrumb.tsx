@@ -34,6 +34,8 @@ interface WorkspaceBreadcrumbProps {
   isAccessControlAllowed: boolean;
   isEnvironmentBreadcrumbVisible: boolean;
   isMembershipPending: boolean;
+  /** Springboard fork: SPRINGBOARD_SINGLE_WORKSPACE=1 hides "Add new workspace". */
+  isWorkspaceCreationLocked?: boolean;
 }
 
 export const WorkspaceBreadcrumb = ({
@@ -48,6 +50,7 @@ export const WorkspaceBreadcrumb = ({
   isAccessControlAllowed,
   isEnvironmentBreadcrumbVisible,
   isMembershipPending,
+  isWorkspaceCreationLocked = false,
 }: WorkspaceBreadcrumbProps) => {
   const { t } = useTranslation();
   const [isWorkspaceDropdownOpen, setIsWorkspaceDropdownOpen] = useState(false);
@@ -160,7 +163,7 @@ export const WorkspaceBreadcrumb = ({
             items={workspaceSwitcher.items}
             selectedId={currentWorkspaceId}
             onSelect={handleWorkspaceChange}>
-            {isMembershipPending || !isOwnerOrManager ? (
+            {isWorkspaceCreationLocked ? null : isMembershipPending || !isOwnerOrManager ? (
               <Popover>
                 <PopoverTrigger asChild>
                   <button

@@ -16,6 +16,8 @@ interface TopControlBarProps {
   membershipRole?: TOrganizationRole;
   // False on the workspace-agnostic settings routes, where no workspace is in scope.
   showWorkspaceBreadcrumb?: boolean;
+  /** Springboard fork: SPRINGBOARD_SINGLE_WORKSPACE=1 hides "Add new workspace". */
+  isWorkspaceCreationLocked?: boolean;
 }
 
 export const TopControlBar = ({
@@ -29,6 +31,7 @@ export const TopControlBar = ({
   isAccessControlAllowed,
   membershipRole,
   showWorkspaceBreadcrumb = true,
+  isWorkspaceCreationLocked = false,
 }: Readonly<TopControlBarProps>) => {
   const { workspace } = useWorkspaceContext();
   const isMembershipPending = membershipRole === undefined;
@@ -49,6 +52,7 @@ export const TopControlBar = ({
         isMembershipPending={isMembershipPending}
         isAccessControlAllowed={isAccessControlAllowed}
         showWorkspaceBreadcrumb={showWorkspaceBreadcrumb}
+        isWorkspaceCreationLocked={isWorkspaceCreationLocked}
       />
     </div>
   );

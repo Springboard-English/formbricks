@@ -16,6 +16,8 @@ import { getOAuthErrorVariant } from "@/modules/auth/lib/oauth-error";
 import { SSOOptions } from "@/modules/ee/sso/components/sso-options";
 import { TwoFactor } from "@/modules/ee/two-factor-auth/components/two-factor";
 import { TwoFactorBackup } from "@/modules/ee/two-factor-auth/components/two-factor-backup";
+import { SourceCodeLink } from "@/modules/springboard/components/source-code-link";
+import { SpringboardSignInButton } from "@/modules/springboard/components/springboard-sign-in-button";
 import { Alert, AlertDescription, AlertTitle } from "@/modules/ui/components/alert";
 import { Button } from "@/modules/ui/components/button";
 import { FormControl, FormError, FormField, FormItem, FormLabel } from "@/modules/ui/components/form";
@@ -56,6 +58,10 @@ interface LoginFormProps {
   inviteToken?: string | null;
   resolvedCallbackPath: string;
   resolvedCallbackUrl: string;
+  /** Springboard fork: show "Sign in with Springboard" (staff OIDC client configured). */
+  springboardSignInEnabled?: boolean;
+  /** Springboard fork: start that sign-in on arrival (sso-redirect.ts decides when). */
+  springboardAutoStart?: boolean;
 }
 
 export const LoginForm = ({
@@ -76,6 +82,8 @@ export const LoginForm = ({
   inviteToken,
   resolvedCallbackPath,
   resolvedCallbackUrl,
+  springboardSignInEnabled = false,
+  springboardAutoStart = false,
 }: Readonly<LoginFormProps>) => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -109,10 +117,15 @@ export const LoginForm = ({
           title: t("auth.login.oauth_generic_error_title"),
           description: t("auth.login.oauth_generic_error_description"),
         };
+      case "springboard_denied":
+        return {
+          title: t("auth.login.springboard_denied_title"),
+          description: t("auth.login.springboard_denied_description", { code: oauthError }),
+        };
       default:
         return null;
     }
-  }, [oauthErrorVariant, t]);
+  }, [oauthErrorVariant, oauthError, t]);
 
   const signupHref = useMemo(() => {
     const base = inviteToken ? `/auth/signup?inviteToken=${inviteToken}` : "/auth/signup";
@@ -334,6 +347,9 @@ export const LoginForm = ({
               </Button>
             )}
           </form>
+          {springboardSignInEnabled && (
+            <SpringboardSignInButton returnToUrl={resolvedCallbackUrl} autoStart={springboardAutoStart} />
+          )}
           {isSsoEnabled && (
             <SSOOptions
               googleOAuthEnabled={googleOAuthEnabled}
@@ -346,6 +362,11 @@ export const LoginForm = ({
               source="signin"
             />
           )}
+        </div>
+
+        {/* Springboard fork: AGPL-3.0 §13 source offer. */}
+        <div className="mt-6 text-center text-xs text-slate-500">
+          <SourceCodeLink />
         </div>
 
         {publicSignUpEnabled && !totpLogin && isMultiOrgEnabled && (

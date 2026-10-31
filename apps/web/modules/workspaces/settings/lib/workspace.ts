@@ -18,6 +18,7 @@ import { DEFAULT_LOCALE } from "@/lib/constants";
 import { isPrismaKnownRequestError, isUniqueConstraintError } from "@/lib/utils/prisma-error";
 import { validateInputs } from "@/lib/utils/validate";
 import { getWorkspaceLegacyStoragePrefixes } from "@/lib/workspace/service";
+import { assertSpringboardWorkspaceCreationAllowed } from "@/modules/springboard/lib/workspace-lock";
 import { deleteFile, deleteWorkspaceFilesBestEffort } from "@/modules/storage/service";
 import { parseStorageFileUrl } from "@/modules/storage/utils";
 
@@ -380,6 +381,10 @@ export const createWorkspace = async (
     // organization in between), and stops a failed createMany from leaving an orphan workspace with no
     // team links.
     workspace = (await prisma.$transaction(async (tx) => {
+      // Springboard fork: SPRINGBOARD_SINGLE_WORKSPACE=1 refuses a second workspace. Separate from, and
+      // ahead of, the licence limit below, which it does not touch.
+      await assertSpringboardWorkspaceCreationAllowed(tx, organizationId);
+
       if (workspaceLimit !== null && Number.isFinite(workspaceLimit)) {
         await assertWorkspaceLimitNotReached(tx, organizationId, workspaceLimit);
       }

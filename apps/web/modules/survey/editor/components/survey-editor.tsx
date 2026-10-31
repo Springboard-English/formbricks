@@ -76,6 +76,8 @@ interface SurveyEditorProps {
   colors: string[];
   isUserTargetingAllowed?: boolean;
   isSpamProtectionAllowed?: boolean;
+  /** Springboard fork: the respondent OIDC client is configured. */
+  isSpringboardSignInAvailable?: boolean;
   isFormbricksCloud: boolean;
   isUnsplashConfigured: boolean;
   isQuotasAllowed: boolean;
@@ -115,6 +117,7 @@ export const SurveyEditor = ({
   colors,
   isUserTargetingAllowed = false,
   isSpamProtectionAllowed = false,
+  isSpringboardSignInAvailable = false,
   isFormbricksCloud,
   isUnsplashConfigured,
   isQuotasAllowed,
@@ -428,6 +431,7 @@ export const SurveyEditor = ({
               membershipRole={membershipRole}
               isUserTargetingAllowed={isUserTargetingAllowed}
               isSpamProtectionAllowed={isSpamProtectionAllowed}
+              isSpringboardSignInAvailable={isSpringboardSignInAvailable}
               workspacePermission={workspacePermission}
               isFormbricksCloud={isFormbricksCloud}
               isQuotasAllowed={isQuotasAllowed}

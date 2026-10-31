@@ -14,6 +14,9 @@ import {
 } from "@/lib/constants";
 import { getPublicDomain } from "@/lib/getPublicUrl";
 import { getIsContactsEnabled } from "@/modules/ee/license-check/lib/utils";
+import { SpringboardRespondentGate } from "@/modules/springboard/components/springboard-respondent-gate";
+import { getSpringboardRespondentGateState } from "@/modules/springboard/lib/respondent-page";
+import { isSpringboardSignInRequired } from "@/modules/springboard/lib/respondent-survey";
 import { PinScreen } from "@/modules/survey/link/components/pin-screen";
 import { SurveyClientWrapper } from "@/modules/survey/link/components/survey-client-wrapper";
 import { SurveyCompletedMessage } from "@/modules/survey/link/components/survey-completed-message";
@@ -110,6 +113,16 @@ export const renderSurvey = async ({
   // Check if single-use survey has already been completed
   if (singleUseResponse?.finished) {
     return <SurveyCompletedMessage singleUseMessage={survey.singleUse} workspace={workspace} />;
+  }
+
+  // Springboard fork: "Sign in with Springboard to answer". The response routes enforce the same cookie.
+  if (isSpringboardSignInRequired(survey) && !isPreview) {
+    const gate = await getSpringboardRespondentGateState(survey.id, searchParams);
+    if (!gate.signedIn) {
+      const error =
+        typeof searchParams.springboardError === "string" ? searchParams.springboardError : undefined;
+      return <SpringboardRespondentGate startUrl={gate.startUrl} error={error} locale={gateLocale} />;
+    }
   }
 
   // Handle email verification flow if enabled

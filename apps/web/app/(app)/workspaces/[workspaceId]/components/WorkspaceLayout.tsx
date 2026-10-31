@@ -10,6 +10,7 @@ import { TrialEndingWarningModal } from "@/modules/ee/billing/components/trial-e
 import { TrialResponseWarningModal } from "@/modules/ee/billing/components/trial-response-warning-modal";
 import { getPendingDowngradeSchedule } from "@/modules/ee/license-check/lib/license";
 import { getOrganizationWorkspacesLimit } from "@/modules/ee/license-check/lib/utils";
+import { isSpringboardSingleWorkspace } from "@/modules/springboard/lib/runtime-config";
 import { LimitsReachedBanner } from "@/modules/ui/components/limits-reached-banner";
 import { PendingDowngradeBanner } from "@/modules/ui/components/pending-downgrade-banner";
 import { TWorkspaceLayoutData } from "@/modules/workspaces/types/workspace-auth";
@@ -145,6 +146,7 @@ export const WorkspaceLayout = async ({ layoutData, children }: WorkspaceLayoutP
           responseCount={responseCount}
           isFormbricksSurveysConfigured={IS_FORMBRICKS_SURVEYS_CONFIGURED}
           trialDaysRemaining={trialDaysRemaining}
+          isWorkspaceCreationLocked={isSpringboardSingleWorkspace()}
         />
         <div id="mainContent" className="flex flex-1 flex-col overflow-hidden bg-slate-50">
           <TopControlBar
@@ -157,6 +159,7 @@ export const WorkspaceLayout = async ({ layoutData, children }: WorkspaceLayoutP
             isOwnerOrManager={isOwnerOrManager}
             isAccessControlAllowed={isAccessControlAllowed}
             membershipRole={membership.role}
+            isWorkspaceCreationLocked={isSpringboardSingleWorkspace()}
           />
           <div className="flex-1 overflow-y-auto">{children}</div>
         </div>

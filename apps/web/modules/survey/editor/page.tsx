@@ -27,6 +27,7 @@ import {
   getIsWorkflowsEnabled,
 } from "@/modules/ee/license-check/lib/utils";
 import { getQuotas } from "@/modules/ee/quotas/lib/quotas";
+import { getSpringboardRespondentConfig } from "@/modules/springboard/lib/runtime-config";
 import { getTeamMemberDetails } from "@/modules/survey/editor/lib/team";
 import { getUserEmail } from "@/modules/survey/editor/lib/user";
 import { getWorkspaceLanguages } from "@/modules/survey/editor/lib/workspace";
@@ -179,6 +180,7 @@ export const SurveyEditorPage = async (props: {
       segments={segments}
       isUserTargetingAllowed={isUserTargetingAllowed}
       isSpamProtectionAllowed={isSpamProtectionAllowed}
+      isSpringboardSignInAvailable={getSpringboardRespondentConfig() !== null}
       workspaceLanguages={workspaceLanguages}
       isFormbricksCloud={IS_FORMBRICKS_CLOUD}
       isUnsplashConfigured={!!UNSPLASH_ACCESS_KEY}

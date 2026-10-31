@@ -1,4 +1,5 @@
 import { SIGNUP_EMAIL_DOMAIN_BLOCKED_ERROR_CODE } from "@formbricks/types/errors";
+import { SPRINGBOARD_REJECT_CODES } from "@/modules/springboard/lib/staff-policy";
 import type { TSsoProvisioningRejectReason } from "./sso-provisioning-reject-reasons";
 
 /**
@@ -28,7 +29,9 @@ export type TOAuthErrorVariant =
   /** The instance's SSO configuration is incomplete. Remedy: tell an admin; retrying cannot help. */
   | "misconfigured"
   /** Anything else, including transient callback failures. Remedy: try again. */
-  | "generic";
+  | "generic"
+  /** Springboard fork: the Springboard sign-in policy refused this account. The code is shown. */
+  | "springboard_denied";
 
 /**
  * Every provisioning reject reason, classified. Keyed on the union rather than listed as loose
@@ -67,6 +70,8 @@ const VARIANT_BY_CODE = new Map<string, TOAuthErrorVariant>([
   ["invalid_scope", "misconfigured"],
 
   ...Object.entries(VARIANT_BY_REJECT_REASON),
+
+  ...SPRINGBOARD_REJECT_CODES.map((code): [string, TOAuthErrorVariant] => [code, "springboard_denied"]),
 ]);
 
 /**

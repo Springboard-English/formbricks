@@ -38,6 +38,12 @@ const CURRENT_CALLBACK_SEGMENT = `${AUTH_BASE_PATH}/callback/`;
 export const PINNED_SSO_PROVIDER_IDS = ["azuread", "openid", "saml"] as const;
 
 /**
+ * Springboard fork: the `springboard` provider pins the same `/oauth2/callback/` shape, so it is mapped
+ * too. Kept out of `PINNED_SSO_PROVIDER_IDS`, which mirrors upstream's own pinned list.
+ */
+const MAPPED_CALLBACK_PROVIDER_IDS: readonly string[] = [...PINNED_SSO_PROVIDER_IDS, "springboard"];
+
+/**
  * The current-version URL for a legacy SSO callback request, or `null` when the request is not one.
  *
  * Matched as a SUFFIX, with the provider id exact and the prefix required to hold no second `/api/auth`.
@@ -71,7 +77,7 @@ export const mapLegacySsoCallbackUrl = (requestUrl: string): string | null => {
   if (url.protocol !== "http:" && url.protocol !== "https:") return null;
 
   const { pathname } = url;
-  const providerId = PINNED_SSO_PROVIDER_IDS.find((id) =>
+  const providerId = MAPPED_CALLBACK_PROVIDER_IDS.find((id) =>
     pathname.endsWith(`${LEGACY_CALLBACK_SEGMENT}${id}`)
   );
   if (providerId === undefined) return null;

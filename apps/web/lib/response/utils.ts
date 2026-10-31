@@ -33,6 +33,11 @@ import { getTextContent } from "@formbricks/types/surveys/validation";
 import { getLocalizedValue } from "@/lib/i18n/utils";
 import { replaceHeadlineRecall } from "@/lib/utils/recall";
 import { displayEmbeddedValue } from "@/modules/embedded-data/lib/value-display";
+import {
+  SPRINGBOARD_RESPONSE_KEYS,
+  hasVerifiedRespondentEmail,
+  recordsSpringboardIdentity,
+} from "@/modules/springboard/lib/respondent-survey";
 import { getElementsFromBlocks } from "@/modules/survey/lib/client-utils";
 import { processResponseData } from "../responses";
 import { getTodaysDateTimeFormatted } from "../time";
@@ -488,9 +493,20 @@ export const getResponsesJson = (
       }
     });
 
-    if (survey.isVerifyEmailEnabled) {
+    if (hasVerifiedRespondentEmail(survey)) {
       const verifiedEmail = response.data["verifiedEmail"];
       jsonData[idx]["Verified Email"] = processResponseData(verifiedEmail);
+    }
+    if (recordsSpringboardIdentity(survey)) {
+      jsonData[idx]["Springboard Account Key"] = processResponseData(
+        response.data[SPRINGBOARD_RESPONSE_KEYS.accountKey]
+      );
+      jsonData[idx]["Springboard Account Type"] = processResponseData(
+        response.data[SPRINGBOARD_RESPONSE_KEYS.accountType]
+      );
+      jsonData[idx]["Springboard Email"] = processResponseData(
+        response.data[SPRINGBOARD_RESPONSE_KEYS.emailOnFile]
+      );
     }
   });
 

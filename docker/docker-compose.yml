@@ -183,6 +183,30 @@ x-environment: &environment
     # Set the below to SAML Provider if you want to enable SAML
     # SAML_DATABASE_URL: "postgresql://<user>:<password>@postgres:5432/formbricks-saml?sslmode=disable"
 
+    # Springboard fork (see SPRINGBOARD.md). "Sign in with Springboard" against Springboard's Ory Hydra,
+    # using the STAFF client. Off unless the first three are set. Callback to register at Hydra:
+    #   <WEBAPP_URL>/api/auth/oauth2/callback/springboard
+    # SPRINGBOARD_OIDC_ISSUER: https://auth.springboard.vn          # dev: https://auth.springboard.vn/dev
+    # SPRINGBOARD_OIDC_CLIENT_ID:
+    # SPRINGBOARD_OIDC_CLIENT_SECRET:
+    # SPRINGBOARD_OIDC_ALLOWED_DOMAINS: springboard.vn             # comma list
+    # SPRINGBOARD_OIDC_DEFAULT_ROLE: member                         # role for new users without an invite
+    # SPRINGBOARD_OIDC_STAFF_ACCOUNT_TYPES:                         # comma list; REQUIRED, every sign-in is refused while unset
+    # Offboarding: POST /api/springboard/offboard and GET /api/springboard/users, Bearer <secret>. Off when unset.
+    # SPRINGBOARD_OFFBOARD_SECRET:                                  # >= 32 chars, same value on the API side
+    # SPRINGBOARD_SESSION_HOURS: 12                                 # session lifetime; 12 by default once Springboard sign-in is on
+    # Respondent sign-in for link surveys ("Sign in with Springboard to answer"), on the separate RESPONDENT client.
+    # Needs SPRINGBOARD_OIDC_ISSUER too. Callback to register at Hydra: <PUBLIC_URL or WEBAPP_URL>/api/springboard/respondent/callback
+    # SPRINGBOARD_RESPONDENT_CLIENT_ID:                             # must differ from SPRINGBOARD_OIDC_CLIENT_ID
+    # SPRINGBOARD_RESPONDENT_CLIENT_SECRET:
+    # SPRINGBOARD_RESPONDENT_COOKIE_SECRET:                         # >= 32 chars, signs the 2-hour respondent cookie
+    # Respondent passes for in-app surveys: Springboard's API signs a 10-minute pass, the app sends it as the
+    # embedded field sb_pass, and the response records who answered. Both or neither.
+    # SPRINGBOARD_RESPONDENT_PASS_PUBLIC_KEY:                       # PEM of the API's JWT key (public half); \n escapes allowed
+    # SPRINGBOARD_RESPONDENT_PASS_ISSUER: https://api.springboard.vn
+    # Hide "Add new workspace" and refuse creating a second workspace on the server. Not a licence limit.
+    # SPRINGBOARD_SINGLE_WORKSPACE: 1
+
     ########################################## OPTIONAL (THIRD PARTY INTEGRATIONS) ###########################################
 
     # Oauth credentials for Notion Integration
