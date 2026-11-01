@@ -3,6 +3,7 @@ import type { TResponseData } from "@formbricks/types/responses";
 import { responses } from "@/app/lib/api/response";
 import type { TRespondentIdentity } from "./respondent-cookie";
 import { getRespondentCookieName, readCookie, verifyRespondentCookie } from "./respondent-cookie";
+import { hasRespondedToSurvey, spendRespondentPass } from "./respondent-once";
 import { verifyRespondentPass } from "./respondent-pass";
 import {
   RESPONDENT_PASS_FIELD,
@@ -23,6 +24,9 @@ import { getSpringboardPassConfig, getSpringboardRespondentConfig } from "./runt
  * pass itself is never stored. A survey that requires sign-in answers 403 without either. With no
  * respondent client configured such a survey cannot be answered at all (fail closed).
  *
+ * A pass counts on in-app surveys only and makes one response. Unless the survey is set to
+ * `respondMultiple`, an account with a response on it is refused a second.
+ *
  * On a survey with core's "Anonymize responses" on, no identity is ever recorded, the app's
  * identifying context keys are dropped and the page URL is cut to its origin.
  */
@@ -32,6 +36,7 @@ type TGateSurvey = {
   type?: string;
   metadata?: unknown;
   isAnonymizeResponsesEnabled?: boolean;
+  displayOption?: string;
 };
 
 type TGateMeta = { url?: string } | undefined;
@@ -49,9 +54,17 @@ const readCookieIdentity = (surveyId: string, cookieHeader: string | null | unde
   );
 };
 
-const readPassIdentity = async (token: unknown): Promise<TRespondentIdentity | null> => {
+const alreadyAnswered = (surveyId: string) =>
+  responses.forbiddenResponse("This account already answered this survey", true, { surveyId });
+
+/** The identity of an unspent pass on an in-app survey. Spends it; anything else is `null`. */
+const readPassIdentity = async (survey: TGateSurvey, token: unknown): Promise<TRespondentIdentity | null> => {
   const config = getSpringboardPassConfig();
-  return config ? verifyRespondentPass(token, config) : null;
+  // A link survey proves who answered with its sign-in cookie, bound to that one survey.
+  if (survey.type !== "app" || !config) return null;
+  const pass = await verifyRespondentPass(token, config);
+  if (!pass) return null;
+  return (await spendRespondentPass(pass.jti, pass.expiresAt)) ? pass.identity : null;
 };
 
 /** Remove every key only the server may write, and the pass. Returns the pass as it arrived. */
@@ -104,14 +117,22 @@ export const enforceSpringboardRespondentGate = async ({
 }): Promise<Response | null> => {
   const pass = takeServerKeys(responseData);
   const signInRequired = isSpringboardSignInRequired(survey);
-  const identity =
-    (signInRequired ? readCookieIdentity(survey.id, cookieHeader) : null) ??
-    (pass === undefined ? null : await readPassIdentity(pass));
+  const cookieIdentity = signInRequired ? readCookieIdentity(survey.id, cookieHeader) : null;
+  const passIdentity = cookieIdentity || pass === undefined ? null : await readPassIdentity(survey, pass);
+  const identity = cookieIdentity ?? passIdentity;
   if (signInRequired && !identity) return forbidden(survey.id);
 
   if (isSpringboardAnonymous(survey)) {
     anonymize(responseData, meta);
     return null;
+  }
+  // Which surveys repeat is set per survey, so a survey asked after every test keeps its answers.
+  if (
+    passIdentity &&
+    survey.displayOption !== "respondMultiple" &&
+    (await hasRespondedToSurvey(survey.id, passIdentity.sub))
+  ) {
+    return alreadyAnswered(survey.id);
   }
   if (identity) stamp(responseData, identity);
   return null;

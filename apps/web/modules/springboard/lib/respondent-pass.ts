@@ -15,12 +15,19 @@ export const RESPONDENT_PASS_TYPE = "respondent_pass";
 /** The API mints ten-minute passes; anything claiming a longer life was not minted by it. */
 export const RESPONDENT_PASS_MAX_LIFETIME_SECONDS = 10 * 60;
 
-/** The identity a pass vouches for, or `null` for any pass that is not exactly what the API mints. */
+/** A pass that verified: who it names, and the id and expiry that let it be spent once. */
+export type TVerifiedRespondentPass = {
+  identity: TRespondentIdentity;
+  jti: string;
+  expiresAt: number;
+};
+
+/** The pass as verified, or `null` for any pass that is not exactly what the API mints. */
 export const verifyRespondentPass = async (
   token: unknown,
   config: TSpringboardPassConfig,
   now = new Date()
-): Promise<TRespondentIdentity | null> => {
+): Promise<TVerifiedRespondentPass | null> => {
   if (typeof token !== "string" || !token) return null;
   try {
     const { payload } = await jwtVerify(token, createPublicKey(config.publicKeyPem), {
@@ -28,12 +35,13 @@ export const verifyRespondentPass = async (
       audience: config.audience,
       algorithms: ["RS256"],
       currentDate: now,
-      requiredClaims: ["sub", "exp", "iat"],
+      requiredClaims: ["sub", "exp", "iat", "jti"],
     });
     if (payload.typ !== RESPONDENT_PASS_TYPE) return null;
     if ((payload.exp ?? 0) - (payload.iat ?? 0) > RESPONDENT_PASS_MAX_LIFETIME_SECONDS) return null;
     const result = identityFromClaims(payload);
-    return result.ok ? result.identity : null;
+    if (!result.ok) return null;
+    return { identity: result.identity, jti: String(payload.jti), expiresAt: payload.exp ?? 0 };
   } catch {
     return null;
   }

@@ -5,11 +5,17 @@ import {
   enforceSpringboardRespondentGate,
   enforceSpringboardRespondentGateOnUpdate,
 } from "./respondent-gate";
+import { hasRespondedToSurvey, spendRespondentPass } from "./respondent-once";
 import { getSpringboardPassConfig, getSpringboardRespondentConfig } from "./runtime-config";
 
 vi.mock("./runtime-config", () => ({
   getSpringboardRespondentConfig: vi.fn(),
   getSpringboardPassConfig: vi.fn(),
+}));
+
+vi.mock("./respondent-once", () => ({
+  hasRespondedToSurvey: vi.fn(),
+  spendRespondentPass: vi.fn(),
 }));
 
 const SECRET = "c".repeat(32);
@@ -28,6 +34,7 @@ const pass = ({ iss = ISSUER, aud = AUDIENCE, ...claims }: Record<string, unknow
   const now = Math.floor(Date.now() / 1000);
   return new SignJWT({
     typ: "respondent_pass",
+    jti: "pass-1",
     email: "staff@springboard.vn",
     email_verified: true,
     account_type: "employee",
@@ -49,6 +56,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  vi.clearAllMocks();
   vi.mocked(getSpringboardRespondentConfig).mockReturnValue({
     issuer: "https://auth.springboard.vn",
     clientId: "respondent-client",
@@ -56,6 +64,8 @@ beforeEach(() => {
     cookieSecret: SECRET,
   });
   vi.mocked(getSpringboardPassConfig).mockReturnValue({ publicKeyPem, issuer: ISSUER, audience: AUDIENCE });
+  vi.mocked(spendRespondentPass).mockResolvedValue(true);
+  vi.mocked(hasRespondedToSurvey).mockResolvedValue(false);
 });
 
 // A client-sent `verifiedEmail` never reaches the gate: the ingest contract drops it first (it is a
@@ -140,6 +150,60 @@ describe("response create gate: sign-in cookie", () => {
       cookieHeader: cookieFor("survey1"),
     });
     expect(response?.status).toBe(403);
+  });
+});
+
+describe("response create gate: a pass is spent once, on an in-app survey", () => {
+  test("a spent pass saves the answer without identity", async () => {
+    vi.mocked(spendRespondentPass).mockResolvedValue(false);
+    const data: Record<string, string> = { q1: "5", sb_pass: await pass() };
+    expect(
+      await enforceSpringboardRespondentGate({ survey: appSurvey, responseData: data, cookieHeader: null })
+    ).toBeNull();
+    expect(data).toEqual({ q1: "5" });
+  });
+
+  test("a pass without an id is not a pass", async () => {
+    const data: Record<string, string> = { q1: "5", sb_pass: await pass({ jti: undefined }) };
+    await enforceSpringboardRespondentGate({ survey: appSurvey, responseData: data, cookieHeader: null });
+    expect(data).toEqual({ q1: "5" });
+    expect(spendRespondentPass).not.toHaveBeenCalled();
+  });
+
+  test("a pass never stands in for a link survey's sign-in", async () => {
+    const data: Record<string, string> = { sb_pass: await pass() };
+    const response = await enforceSpringboardRespondentGate({
+      survey,
+      responseData: data,
+      cookieHeader: null,
+    });
+    expect(response?.status).toBe(403);
+    expect(spendRespondentPass).not.toHaveBeenCalled();
+  });
+
+  test("a second answer from the same account is refused", async () => {
+    vi.mocked(hasRespondedToSurvey).mockResolvedValue(true);
+    const data: Record<string, string> = { q1: "5", sb_pass: await pass() };
+    const response = await enforceSpringboardRespondentGate({
+      survey: appSurvey,
+      responseData: data,
+      cookieHeader: null,
+    });
+    expect(response?.status).toBe(403);
+    expect(hasRespondedToSurvey).toHaveBeenCalledWith("survey2", "sb-7");
+  });
+
+  test("a survey set to respond multiple keeps every answer", async () => {
+    vi.mocked(hasRespondedToSurvey).mockResolvedValue(true);
+    const data: Record<string, string> = { sb_pass: await pass() };
+    expect(
+      await enforceSpringboardRespondentGate({
+        survey: { ...appSurvey, displayOption: "respondMultiple" },
+        responseData: data,
+        cookieHeader: null,
+      })
+    ).toBeNull();
+    expect(data.springboardAccountKey).toBe("sb-7");
   });
 });
 

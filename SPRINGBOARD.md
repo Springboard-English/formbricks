@@ -133,10 +133,15 @@ the survey with its original query string, so single-use links and hidden fields
 
 **In-app surveys: a respondent pass.** The app (Leap) calls Springboard's
 `POST /v2/users/me/respondent-pass` and sends the token as the embedded field `sb_pass`. The pass is RS256,
-lives ten minutes, and must carry `typ: respondent_pass`, the configured issuer and this instance's
+lives ten minutes, and must carry `typ: respondent_pass`, a `jti`, the configured issuer and this instance's
 `WEBAPP_URL` as audience. **A survey that wants in-app answers identified declares an ingested embedded field
-named `sb_pass`**, because the ingest contract keeps declared fields only. A missing or invalid pass saves the
-answer without identity; it is never refused.
+named `sb_pass`**, because the ingest contract keeps declared fields only. A missing, invalid or spent pass
+saves the answer without identity; it is never refused.
+
+A pass counts on in-app surveys only, never in place of a link survey's sign-in, and Redis spends its `jti` on
+first use, so one pass makes one response. Unless the survey's display option is `respondMultiple`, a second
+response from an account that already has one answers 403. The check reads then writes, so two simultaneous
+responses can both pass it. A pass proves who answered, not that the answers are honest.
 
 The response routes, not the page, are the trust boundary: on every create they read the cookie or the pass
 and write `springboardAccountKey`, `springboardAccountType` and `springboardEmail` (plus core's

@@ -54,6 +54,11 @@ export const createCacheKey = {
     countBySurveyId: (surveyId: string): CacheKey => makeCacheKey("response", surveyId, "count"),
   },
 
+  // Springboard fork: a respondent pass spent by its id
+  springboard: {
+    respondentPass: (jti: string): CacheKey => makeCacheKey("springboard", "respondent-pass", jti),
+  },
+
   // Hub-related keys
   hub: {
     feedbackRecordTenant: (recordId: string): CacheKey =>
