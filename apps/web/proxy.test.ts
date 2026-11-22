@@ -12,6 +12,12 @@ const { mockGetProxySession, mockIsPublicDomainConfigured, mockIsRequestFromPubl
   })
 );
 
+const { mockIsSpringboardHydraOnly } = vi.hoisted(() => ({ mockIsSpringboardHydraOnly: vi.fn(() => false) }));
+
+vi.mock("@/modules/springboard/lib/runtime-config", () => ({
+  isSpringboardHydraOnly: mockIsSpringboardHydraOnly,
+}));
+
 vi.mock("@/modules/auth/lib/proxy-session", () => ({
   getProxySession: mockGetProxySession,
 }));
@@ -59,6 +65,20 @@ describe("proxy", () => {
     vi.clearAllMocks();
     mockIsPublicDomainConfigured.mockReturnValue(false);
     mockIsRequestFromPublicDomain.mockReturnValue(false);
+    mockIsSpringboardHydraOnly.mockReturnValue(false);
+  });
+
+  test("SPRINGBOARD_HYDRA_ONLY 404s the retired OAuth server and leaves sign-in open", async () => {
+    mockGetProxySession.mockResolvedValue(null);
+    const status = async (path: string) =>
+      (await proxy(new NextRequest(`http://localhost:3000${path}`))).status;
+
+    expect(await status("/api/mcp")).not.toBe(404);
+    mockIsSpringboardHydraOnly.mockReturnValue(true);
+    expect(await status("/api/mcp")).toBe(404);
+    expect(await status("/.well-known/oauth-authorization-server")).toBe(404);
+    expect(await status("/api/auth/oauth2/register")).toBe(404);
+    expect(await status("/api/auth/oauth2/callback/springboard")).not.toBe(404);
   });
 
   test("redirects unauthenticated protected routes to login with callbackUrl", async () => {

@@ -34,7 +34,9 @@ export type TSpringboardRawEnv = Partial<
     | "SPRINGBOARD_RESPONDENT_COOKIE_SECRET"
     | "SPRINGBOARD_RESPONDENT_PASS_PUBLIC_KEY"
     | "SPRINGBOARD_RESPONDENT_PASS_ISSUER"
-    | "SPRINGBOARD_SINGLE_WORKSPACE",
+    | "SPRINGBOARD_SINGLE_WORKSPACE"
+    | "SPRINGBOARD_HYDRA_BEARER"
+    | "SPRINGBOARD_HYDRA_ONLY",
     string | undefined
   >
 >;
@@ -61,6 +63,15 @@ export type TSpringboardPassConfig = {
   publicKeyPem: string;
   issuer: string;
   /** This instance's own origin (WEBAPP_URL): a pass minted for anywhere else is refused. */
+  audience: string;
+};
+
+/**
+ * How to accept a Hydra access token on `/api/v3`: the staff issuer, and this instance's own origin as
+ * the audience the token must carry (the API asks Hydra for it in a jwt-bearer exchange).
+ */
+export type TSpringboardHydraBearerConfig = {
+  issuer: string;
   audience: string;
 };
 
@@ -156,11 +167,25 @@ export const parseSessionMaxAgeSeconds = (raw: TSpringboardRawEnv): number | nul
   return parseStaffConfig(raw) ? DEFAULT_SESSION_HOURS * 3600 : null;
 };
 
+/** `null` = Hydra bearer tokens are ignored. Needs `SPRINGBOARD_HYDRA_BEARER=1`, the issuer and `WEBAPP_URL`. */
+export const parseHydraBearerConfig = (
+  raw: TSpringboardRawEnv,
+  webappUrl: string | undefined
+): TSpringboardHydraBearerConfig | null => {
+  const issuer = clean(raw.SPRINGBOARD_OIDC_ISSUER);
+  const audience = clean(webappUrl);
+  if (clean(raw.SPRINGBOARD_HYDRA_BEARER) !== "1" || !issuer || !audience) return null;
+  return { issuer: normalizeIssuer(issuer), audience: normalizeIssuer(audience) };
+};
+
 export const parseOffboardSecret = (raw: TSpringboardRawEnv): string | null =>
   clean(raw.SPRINGBOARD_OFFBOARD_SECRET) ?? null;
 
 export const parseSingleWorkspace = (raw: TSpringboardRawEnv): boolean =>
   clean(raw.SPRINGBOARD_SINGLE_WORKSPACE) === "1";
+
+/** `SPRINGBOARD_HYDRA_ONLY=1`: Formbricks issues no OAuth tokens of its own; Hydra is the only issuer. */
+export const parseHydraOnly = (raw: TSpringboardRawEnv): boolean => clean(raw.SPRINGBOARD_HYDRA_ONLY) === "1";
 
 const MIN_SECRET_LENGTH = 32;
 
@@ -237,6 +262,19 @@ export const validateSpringboardEnv = (raw: TSpringboardRawEnv): string[] => {
   const singleWorkspace = clean(raw.SPRINGBOARD_SINGLE_WORKSPACE);
   if (singleWorkspace && singleWorkspace !== "1" && singleWorkspace !== "0") {
     issues.push("SPRINGBOARD_SINGLE_WORKSPACE must be 1 or 0.");
+  }
+
+  const hydraBearer = clean(raw.SPRINGBOARD_HYDRA_BEARER);
+  if (hydraBearer && hydraBearer !== "1" && hydraBearer !== "0") {
+    issues.push("SPRINGBOARD_HYDRA_BEARER must be 1 or 0.");
+  }
+  if (hydraBearer === "1" && !issuer) {
+    issues.push("SPRINGBOARD_HYDRA_BEARER needs SPRINGBOARD_OIDC_ISSUER.");
+  }
+
+  const hydraOnly = clean(raw.SPRINGBOARD_HYDRA_ONLY);
+  if (hydraOnly && hydraOnly !== "1" && hydraOnly !== "0") {
+    issues.push("SPRINGBOARD_HYDRA_ONLY must be 1 or 0.");
   }
 
   return issues;

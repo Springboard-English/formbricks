@@ -30,7 +30,10 @@ import { ssoDatabaseHooks, ssoLicenseGateBeforeHandler } from "@/modules/ee/sso/
 import { ssoGenericOAuthConfig, ssoSocialProviders } from "@/modules/ee/sso/lib/better-auth-providers";
 import { ssoRecoverySignInPlugin } from "@/modules/ee/sso/lib/better-auth-recovery-signin";
 import { withSpringboardDatabaseHooks } from "@/modules/springboard/lib/auth-hooks";
-import { getSpringboardSessionMaxAgeSeconds } from "@/modules/springboard/lib/runtime-config";
+import {
+  getSpringboardSessionMaxAgeSeconds,
+  isSpringboardHydraOnly,
+} from "@/modules/springboard/lib/runtime-config";
 import { getSpringboardGenericOAuthConfig } from "@/modules/springboard/lib/staff-provider";
 import { runAfterAuthHooks } from "./after-auth-hooks";
 import { EMAIL_VERIFICATION_TTL_SECONDS, USE_SECURE_COOKIES } from "./auth-cookies";
@@ -72,6 +75,9 @@ export const getUserLocale = async (userId: string): Promise<TUserLocale> => {
   const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { locale: true } });
   return (dbUser?.locale ?? "en-US") as TUserLocale;
 };
+
+/** Springboard fork: SPRINGBOARD_HYDRA_ONLY=1 retires the MCP OAuth server (see the plugin list). */
+const HYDRA_ONLY = isSpringboardHydraOnly();
 
 /**
  * Better Auth server instance (ENG-1054 — NextAuth → Better Auth migration).
@@ -433,13 +439,20 @@ export const auth = betterAuth({
   logger: betterAuthLogger,
 
   plugins: [
-    jwt({
-      disableSettingJwtHeader: true,
-      jwt: {
-        issuer: getAuthIssuerUrl(),
-        audience: getMcpResourceUrl(),
-      },
-    }),
+    // Springboard fork: SPRINGBOARD_HYDRA_ONLY=1 leaves out both plugins of the MCP OAuth server, jwt()
+    // and oauthProvider(), so Formbricks mints no tokens; proxy.ts 404s their routes. The other plugins
+    // keep their order.
+    ...(HYDRA_ONLY
+      ? []
+      : [
+          jwt({
+            disableSettingJwtHeader: true,
+            jwt: {
+              issuer: getAuthIssuerUrl(),
+              audience: getMcpResourceUrl(),
+            },
+          }),
+        ]),
     // twoFactor() MUST come before every plugin whose after hook acts on the session a request set:
     // Better Auth runs plugin after hooks in list order (the root `hooks.after` runs before all of them,
     // so it gets no such guarantee), and for a user with 2FA a correct password alone sets a session
@@ -459,7 +472,7 @@ export const auth = betterAuth({
     }),
     // Options extracted to mcp-oauth-provider-options.ts so the DCR/authorize scope semantics are
     // integration-testable against a throwaway Better Auth instance.
-    oauthProvider(getMcpOauthProviderOptions()),
+    ...(HYDRA_ONLY ? [] : [oauthProvider(getMcpOauthProviderOptions())]),
     // SSO via generic OAuth (Azure/OIDC + the BoxyHQ SAML bridge); empty config when no license or
     // providers are configured. The account-linking/provisioning hooks are a separate reviewed pass.
     // Springboard fork: "Sign in with Springboard" is appended; `[]` when it is not configured.

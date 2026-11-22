@@ -798,6 +798,8 @@ const parsedEnv = createEnv({
     SPRINGBOARD_RESPONDENT_PASS_PUBLIC_KEY: z.string().optional(),
     SPRINGBOARD_RESPONDENT_PASS_ISSUER: z.string().optional(),
     SPRINGBOARD_SINGLE_WORKSPACE: z.string().optional(),
+    SPRINGBOARD_HYDRA_BEARER: z.string().optional(),
+    SPRINGBOARD_HYDRA_ONLY: z.string().optional(),
     SESSION_MAX_AGE: z
       .string()
       .transform((val) => Number.parseInt(val, 10))
@@ -995,6 +997,8 @@ const parsedEnv = createEnv({
     SPRINGBOARD_RESPONDENT_PASS_PUBLIC_KEY: process.env.SPRINGBOARD_RESPONDENT_PASS_PUBLIC_KEY,
     SPRINGBOARD_RESPONDENT_PASS_ISSUER: process.env.SPRINGBOARD_RESPONDENT_PASS_ISSUER,
     SPRINGBOARD_SINGLE_WORKSPACE: process.env.SPRINGBOARD_SINGLE_WORKSPACE,
+    SPRINGBOARD_HYDRA_BEARER: process.env.SPRINGBOARD_HYDRA_BEARER,
+    SPRINGBOARD_HYDRA_ONLY: process.env.SPRINGBOARD_HYDRA_ONLY,
     SESSION_MAX_AGE: process.env.SESSION_MAX_AGE,
     SENTRY_ENVIRONMENT: process.env.SENTRY_ENVIRONMENT,
   },

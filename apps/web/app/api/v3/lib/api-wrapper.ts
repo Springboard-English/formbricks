@@ -21,6 +21,7 @@ import { applyRateLimit } from "@/modules/core/rate-limit/helpers";
 import { rateLimitConfigs } from "@/modules/core/rate-limit/rate-limit-configs";
 import type { TRateLimitConfig } from "@/modules/core/rate-limit/types/rate-limit";
 import { TAuditAction, TAuditTarget } from "@/modules/ee/audit-logs/types/audit-log";
+import { authenticateSpringboardBearer } from "@/modules/springboard/lib/hydra-bearer";
 import {
   arrayBudgetInvalidParam,
   findArrayBudgetViolation,
@@ -267,6 +268,14 @@ async function authenticateV3Request(req: NextRequest, authMode: TV3AuthMode): P
 
   if (authMode === "both" && getApiKeyFromHeaders(req.headers)) {
     return await authenticateRequest(req);
+  }
+
+  // Springboard fork: a Hydra access token from Springboard's API acts as its linked user. A token that
+  // claims the issuer but fails a check is refused outright, never retried as a cookie or an API key.
+  if (authMode === "both") {
+    const springboard = await authenticateSpringboardBearer(req);
+    if (springboard.kind === "session") return springboard.session;
+    if (springboard.kind === "refused") return null;
   }
 
   if (authMode === "session" || authMode === "both") {

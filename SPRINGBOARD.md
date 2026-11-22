@@ -29,28 +29,35 @@ Each change is off until its environment variables are set, and is its own commi
    Springboard account key, account type and email on file. Core's "Anonymize responses" turns all of it off.
 4. **Single workspace.** "Add new workspace" is hidden and creating a second workspace is refused on the
    server. This is not a licence limit and changes none.
-5. **Source link, this file, and an image build** (`.github/workflows/springboard-image.yml`).
+5. **Hydra bearer tokens on `/api/v3`.** Springboard's API calls the v3 survey and response routes as the
+   signed-in person, with a Hydra access token it got in a jwt-bearer exchange. The token acts as the
+   Formbricks user linked to its `sub`, so that person's own role decides. See "Hydra bearer tokens" below.
+6. **Hydra is the only token issuer.** `SPRINGBOARD_HYDRA_ONLY=1` retires Formbricks' own OAuth server: the
+   MCP authorization server, its dynamic client registration, consent screen and `/api/mcp`. See "Hydra is
+   the only token issuer" below.
+7. **Source link, this file, and an image build** (`.github/workflows/springboard-image.yml`).
 
-The MCP server at `/api/mcp` is untouched.
+The MCP server at `/api/mcp` is unchanged, and retired along with its OAuth server by `SPRINGBOARD_HYDRA_ONLY=1`.
 
 ## Environment variables
 
-| Variable                                 | Default          | Purpose                                                                                        |
-| ---------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------- |
-| `SPRINGBOARD_OIDC_ISSUER`                | unset (off)      | Hydra issuer. Prod `https://auth.springboard.vn`, dev `https://auth.springboard.vn/dev`.       |
-| `SPRINGBOARD_OIDC_CLIENT_ID`             | unset (off)      | STAFF client id.                                                                               |
-| `SPRINGBOARD_OIDC_CLIENT_SECRET`         | unset (off)      | STAFF client secret.                                                                           |
-| `SPRINGBOARD_OIDC_ALLOWED_DOMAINS`       | `springboard.vn` | Comma list of email domains staff may sign in with (exact match, no subdomains).               |
-| `SPRINGBOARD_OIDC_DEFAULT_ROLE`          | `member`         | Organization role for a new staff user without a pending invite.                               |
-| `SPRINGBOARD_OIDC_STAFF_ACCOUNT_TYPES`   | unset            | Comma list of staff `account_type` values. **Required**: every sign-in is refused while unset. |
-| `SPRINGBOARD_SESSION_HOURS`              | `12`             | Session lifetime. Only applies once Springboard sign-in is on, or when set explicitly.         |
-| `SPRINGBOARD_OFFBOARD_SECRET`            | unset (off)      | Bearer secret for the offboarding endpoints, at least 32 characters. Same value on the API.    |
-| `SPRINGBOARD_RESPONDENT_CLIENT_ID`       | unset (off)      | RESPONDENT client id. Must differ from the STAFF client.                                       |
-| `SPRINGBOARD_RESPONDENT_CLIENT_SECRET`   | unset (off)      | RESPONDENT client secret.                                                                      |
-| `SPRINGBOARD_RESPONDENT_COOKIE_SECRET`   | unset (off)      | Signs the respondent cookie, at least 32 characters.                                           |
+| Variable                                 | Default          | Purpose                                                                                                                                              |
+| ---------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SPRINGBOARD_OIDC_ISSUER`                | unset (off)      | Hydra issuer. Prod `https://auth.springboard.vn`, dev `https://auth.springboard.vn/dev`.                                                             |
+| `SPRINGBOARD_OIDC_CLIENT_ID`             | unset (off)      | STAFF client id.                                                                                                                                     |
+| `SPRINGBOARD_OIDC_CLIENT_SECRET`         | unset (off)      | STAFF client secret.                                                                                                                                 |
+| `SPRINGBOARD_OIDC_ALLOWED_DOMAINS`       | `springboard.vn` | Comma list of email domains staff may sign in with (exact match, no subdomains).                                                                     |
+| `SPRINGBOARD_OIDC_DEFAULT_ROLE`          | `member`         | Organization role for a new staff user without a pending invite.                                                                                     |
+| `SPRINGBOARD_OIDC_STAFF_ACCOUNT_TYPES`   | unset            | Comma list of staff `account_type` values. **Required**: every sign-in is refused while unset.                                                       |
+| `SPRINGBOARD_SESSION_HOURS`              | `12`             | Session lifetime. Only applies once Springboard sign-in is on, or when set explicitly.                                                               |
+| `SPRINGBOARD_OFFBOARD_SECRET`            | unset (off)      | Bearer secret for the offboarding endpoints, at least 32 characters. Same value on the API.                                                          |
+| `SPRINGBOARD_RESPONDENT_CLIENT_ID`       | unset (off)      | RESPONDENT client id. Must differ from the STAFF client.                                                                                             |
+| `SPRINGBOARD_RESPONDENT_CLIENT_SECRET`   | unset (off)      | RESPONDENT client secret.                                                                                                                            |
+| `SPRINGBOARD_RESPONDENT_COOKIE_SECRET`   | unset (off)      | Signs the respondent cookie, at least 32 characters.                                                                                                 |
 | `SPRINGBOARD_RESPONDENT_PASS_PUBLIC_KEY` | unset (off)      | PEM public key of the API's respondent pass key (`respondent_pass_private_key[_dev]`), never its JWT key; `\n` escapes allowed. Set with the issuer. |
-| `SPRINGBOARD_RESPONDENT_PASS_ISSUER`     | unset (off)      | The API's issuer, `https://api.springboard.vn`. The audience is this instance's `WEBAPP_URL`.  |
-| `SPRINGBOARD_SINGLE_WORKSPACE`           | unset (off)      | `1` hides and blocks creating a second workspace.                                              |
+| `SPRINGBOARD_RESPONDENT_PASS_ISSUER`     | unset (off)      | The API's issuer, `https://api.springboard.vn`. The audience is this instance's `WEBAPP_URL`.                                                        |
+| `SPRINGBOARD_SINGLE_WORKSPACE`           | unset (off)      | `1` hides and blocks creating a second workspace.                                                                                                    |
+| `SPRINGBOARD_HYDRA_BEARER`               | unset (off)      | `1` accepts Hydra access tokens on the v3 survey and response routes. Needs the issuer.                                                              |
 
 The container refuses to start on a half-configured feature (for example an issuer without a client secret),
 and logs a warning while `SPRINGBOARD_OIDC_STAFF_ACCOUNT_TYPES` is unset. Hydra clients must use
@@ -156,6 +163,42 @@ only decides who may answer.
 
 **Identified answers are not anonymous.** Survey owners should say so in the welcome card or first question
 ("Your Springboard account and email are recorded with your answers").
+
+## Hydra bearer tokens
+
+`SPRINGBOARD_HYDRA_BEARER=1` lets Springboard's API reach `/api/v3` as a person, with no API key. The API
+swaps its caller's token at Hydra (RFC 7523 jwt-bearer) for one whose audience is this instance's
+`WEBAPP_URL`, carrying only the survey consent scopes the caller already holds, and sends it as
+`Authorization: Bearer`. Only routes that accept an API key (`auth: "both"`) look at it.
+
+| Check                                                                                                                                                                | On failure                                      |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Not a JWT, an `fbk_` key, or `iss` is not the staff issuer                                                                                                           | Not ours: API-key and cookie auth run as before |
+| Signature (issuer JWKS via discovery), `iss`, `aud`, `exp`                                                                                                           | 401                                             |
+| Route and scope: `surveys:read` for survey GETs, `surveys:write` for other survey methods, `survey_responses:read` for response GETs; every other v3 route is closed | 401                                             |
+| An `Account` with provider `springboard` and that `sub`, on an active user                                                                                           | 401 (sign in to the dashboard once first)       |
+
+A token that passes becomes a session for the linked user, so Formbricks' membership and role checks and its
+audit log apply to that person. Offboarding removes the link, so a leaver's still-valid token stops at the
+lookup. Refusals are logged with their reason, never the token.
+
+## Hydra is the only token issuer
+
+Upstream 6.1 makes Formbricks an OAuth 2.1 authorization server for its MCP endpoint: Better Auth's `jwt()` and
+`oauthProvider()` plugins, open dynamic client registration, a consent screen, and refresh tokens good for 30
+days. Springboard's identity service is Hydra, so with `SPRINGBOARD_HYDRA_ONLY=1`:
+
+- `jwt()` and `oauthProvider()` are not registered, so Formbricks mints no access or refresh tokens, and any it
+  minted before no longer verify anywhere.
+- `proxy.ts` answers 404 for `/.well-known/oauth-authorization-server`, `/.well-known/openid-configuration`,
+  `/.well-known/oauth-protected-resource`, `/api/mcp`, `/account/authorize`,
+  `/account/settings/authorized-apps`, and Better Auth's `/api/auth/oauth2/*`, `/api/auth/admin/oauth2/*`,
+  `/api/auth/.well-known/*` and `/api/auth/jwks`.
+- `/api/auth/oauth2/callback/*` stays open: it is the staff sign-in callback.
+
+Better Auth stays as the dashboard's session layer; "Sign in with Springboard" is its `genericOAuth` plugin.
+Survey tools for an assistant go through Springboard's API and its MCP connector instead (Hydra bearer tokens,
+above). The `oauth*` tables are left in place, unused, so a later upstream migration still applies.
 
 ## Rebasing onto a new upstream tag
 

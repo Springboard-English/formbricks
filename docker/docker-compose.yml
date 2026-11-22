@@ -206,6 +206,11 @@ x-environment: &environment
     # SPRINGBOARD_RESPONDENT_PASS_ISSUER: https://api.springboard.vn
     # Hide "Add new workspace" and refuse creating a second workspace on the server. Not a licence limit.
     # SPRINGBOARD_SINGLE_WORKSPACE: 1
+    # Let Springboard's API call the v3 survey and response routes as a person, with a Hydra access token
+    # from a jwt-bearer exchange (audience = WEBAPP_URL). Needs SPRINGBOARD_OIDC_ISSUER.
+    # SPRINGBOARD_HYDRA_BEARER: 1
+    # Retire Formbricks' own OAuth server (MCP authorization server, DCR, consent, /api/mcp); Hydra issues every token.
+    # SPRINGBOARD_HYDRA_ONLY: 1
 
     ########################################## OPTIONAL (THIRD PARTY INTEGRATIONS) ###########################################
 

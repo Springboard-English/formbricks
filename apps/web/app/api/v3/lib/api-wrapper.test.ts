@@ -9,9 +9,10 @@ import { formatZodIssues, withV3ApiWrapper } from "./api-wrapper";
 import { V3_REQUEST_ARRAY_MAX_ITEMS, V3_REQUEST_MAX_DEPTH } from "./array-budget";
 import { V3_INVALID_PARAMS_MAX } from "./invalid-params";
 
-const { mockAuthenticateRequest, mockGetSession } = vi.hoisted(() => ({
+const { mockAuthenticateRequest, mockGetSession, mockSpringboardBearer } = vi.hoisted(() => ({
   mockAuthenticateRequest: vi.fn(),
   mockGetSession: vi.fn(),
+  mockSpringboardBearer: vi.fn(),
 }));
 
 const { mockQueueAuditEvent, mockBuildAuditLogBaseObject } = vi.hoisted(() => ({
@@ -37,6 +38,10 @@ const { mockLoggerWarn, mockLoggerError } = vi.hoisted(() => ({
 
 vi.mock("@/modules/auth/lib/session", () => ({
   getSession: mockGetSession,
+}));
+
+vi.mock("@/modules/springboard/lib/hydra-bearer", () => ({
+  authenticateSpringboardBearer: mockSpringboardBearer,
 }));
 
 vi.mock("@/app/api/v1/auth", () => ({
@@ -65,9 +70,15 @@ vi.mock("@formbricks/logger", () => ({
   },
 }));
 
+// Not a Springboard token unless a test says otherwise; re-armed after every reset.
+beforeEach(() => {
+  mockSpringboardBearer.mockResolvedValue({ kind: "absent" });
+});
+
 describe("withV3ApiWrapper", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockSpringboardBearer.mockResolvedValue({ kind: "absent" });
     mockGetSession.mockResolvedValue(null);
     mockAuthenticateRequest.mockResolvedValue(null);
   });
@@ -286,6 +297,65 @@ describe("withV3ApiWrapper", () => {
     expect(response.status).toBe(200);
     expect(mockAuthenticateRequest).toHaveBeenCalledOnce();
     expect(mockGetSession).not.toHaveBeenCalled();
+  });
+
+  test("a Springboard Hydra token acts as its linked user, ahead of the cookie", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "cookie_user" }, expires: "2026-01-01" });
+    mockSpringboardBearer.mockResolvedValueOnce({
+      kind: "session",
+      session: {
+        user: { id: "linked_user", email: "s@springboard.vn", isActive: true },
+        expires: "2026-01-01",
+      },
+    });
+
+    const wrapped = withV3ApiWrapper({
+      auth: "both",
+      handler: async ({ authentication }) => {
+        expect(authentication).toMatchObject({ user: { id: "linked_user" } });
+        return Response.json({ ok: true });
+      },
+    });
+
+    const response = await wrapped(
+      new NextRequest("http://localhost/api/v3/surveys", { headers: { authorization: "Bearer eyJ.x.y" } }),
+      {} as never
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockGetSession).not.toHaveBeenCalled();
+    expect(mockAuthenticateRequest).not.toHaveBeenCalled();
+  });
+
+  test("a refused Springboard Hydra token is a 401, never retried as a cookie or API key", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "cookie_user" }, expires: "2026-01-01" });
+    mockSpringboardBearer.mockResolvedValueOnce({ kind: "refused", reason: "token lacks surveys:write" });
+    const handler = vi.fn(async () => Response.json({ ok: true }));
+
+    const response = await withV3ApiWrapper({ auth: "both", handler })(
+      new NextRequest("http://localhost/api/v3/surveys", { headers: { authorization: "Bearer eyJ.x.y" } }),
+      {} as never
+    );
+
+    expect(response.status).toBe(401);
+    expect(handler).not.toHaveBeenCalled();
+    expect(mockGetSession).not.toHaveBeenCalled();
+    expect(mockAuthenticateRequest).not.toHaveBeenCalled();
+  });
+
+  test("a session-only route never consults the Springboard bearer", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "cookie_user" }, expires: "2026-01-01" });
+
+    const response = await withV3ApiWrapper({
+      auth: "session",
+      handler: async () => Response.json({ ok: true }),
+    })(
+      new NextRequest("http://localhost/api/v3/tags", { headers: { authorization: "Bearer eyJ.x.y" } }),
+      {} as never
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockSpringboardBearer).not.toHaveBeenCalled();
   });
 
   test("returns 401 problem response when authentication is required but missing", async () => {
