@@ -8,6 +8,8 @@ import { FORMBRICKS_ORGANIZATION_ID_COOKIE, FORMBRICKS_WORKSPACE_ID_COOKIE } fro
 import { FORMBRICKS_CLIENT_IP_HEADER, resolveClientIp } from "@/lib/utils/client-ip";
 import { getValidatedCallbackUrl } from "@/lib/utils/url";
 import { getProxySession } from "@/modules/auth/lib/proxy-session";
+import { isClosedWhenHydraOnly } from "@/modules/springboard/lib/hydra-only";
+import { isSpringboardHydraOnly } from "@/modules/springboard/lib/runtime-config";
 
 const handleAuth = async (request: NextRequest): Promise<NextResponse | null> => {
   const session = await getProxySession(request);
@@ -120,6 +122,11 @@ export const proxy = async (originalRequest: NextRequest) => {
 
   const ingestResponse = handleIngestBodyLimit(originalRequest);
   if (ingestResponse) return ingestResponse;
+
+  // Springboard fork: with SPRINGBOARD_HYDRA_ONLY=1 the MCP OAuth server is gone, routes and all.
+  if (isSpringboardHydraOnly() && isClosedWhenHydraOnly(originalRequest.nextUrl.pathname)) {
+    return new NextResponse(null, { status: 404 });
+  }
 
   // Create a new Request object to override headers and add a unique request ID header
   const request = new NextRequest(originalRequest, {

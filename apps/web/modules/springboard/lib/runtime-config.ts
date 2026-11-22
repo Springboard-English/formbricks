@@ -9,6 +9,7 @@ import {
   type TSpringboardStaffConfig,
   getSpringboardEnvWarnings,
   parseHydraBearerConfig,
+  parseHydraOnly,
   parseOffboardSecret,
   parsePassConfig,
   parseRespondentConfig,
@@ -38,6 +39,8 @@ export const getSpringboardHydraBearerConfig = (): TSpringboardHydraBearerConfig
 export const getSpringboardSessionMaxAgeSeconds = (): number | null => parseSessionMaxAgeSeconds(raw());
 
 export const getSpringboardOffboardSecret = (): string | null => parseOffboardSecret(raw());
+
+export const isSpringboardHydraOnly = (): boolean => parseHydraOnly(raw());
 
 export const isSpringboardSingleWorkspace = (): boolean => parseSingleWorkspace(raw());
 

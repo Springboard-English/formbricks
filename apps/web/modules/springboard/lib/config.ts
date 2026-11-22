@@ -35,7 +35,8 @@ export type TSpringboardRawEnv = Partial<
     | "SPRINGBOARD_RESPONDENT_PASS_PUBLIC_KEY"
     | "SPRINGBOARD_RESPONDENT_PASS_ISSUER"
     | "SPRINGBOARD_SINGLE_WORKSPACE"
-    | "SPRINGBOARD_HYDRA_BEARER",
+    | "SPRINGBOARD_HYDRA_BEARER"
+    | "SPRINGBOARD_HYDRA_ONLY",
     string | undefined
   >
 >;
@@ -183,6 +184,9 @@ export const parseOffboardSecret = (raw: TSpringboardRawEnv): string | null =>
 export const parseSingleWorkspace = (raw: TSpringboardRawEnv): boolean =>
   clean(raw.SPRINGBOARD_SINGLE_WORKSPACE) === "1";
 
+/** `SPRINGBOARD_HYDRA_ONLY=1`: Formbricks issues no OAuth tokens of its own; Hydra is the only issuer. */
+export const parseHydraOnly = (raw: TSpringboardRawEnv): boolean => clean(raw.SPRINGBOARD_HYDRA_ONLY) === "1";
+
 const MIN_SECRET_LENGTH = 32;
 
 /**
@@ -266,6 +270,11 @@ export const validateSpringboardEnv = (raw: TSpringboardRawEnv): string[] => {
   }
   if (hydraBearer === "1" && !issuer) {
     issues.push("SPRINGBOARD_HYDRA_BEARER needs SPRINGBOARD_OIDC_ISSUER.");
+  }
+
+  const hydraOnly = clean(raw.SPRINGBOARD_HYDRA_ONLY);
+  if (hydraOnly && hydraOnly !== "1" && hydraOnly !== "0") {
+    issues.push("SPRINGBOARD_HYDRA_ONLY must be 1 or 0.");
   }
 
   return issues;

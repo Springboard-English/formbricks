@@ -209,6 +209,8 @@ x-environment: &environment
     # Let Springboard's API call the v3 survey and response routes as a person, with a Hydra access token
     # from a jwt-bearer exchange (audience = WEBAPP_URL). Needs SPRINGBOARD_OIDC_ISSUER.
     # SPRINGBOARD_HYDRA_BEARER: 1
+    # Retire Formbricks' own OAuth server (MCP authorization server, DCR, consent, /api/mcp); Hydra issues every token.
+    # SPRINGBOARD_HYDRA_ONLY: 1
 
     ########################################## OPTIONAL (THIRD PARTY INTEGRATIONS) ###########################################
 

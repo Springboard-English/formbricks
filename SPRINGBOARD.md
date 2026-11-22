@@ -32,9 +32,12 @@ Each change is off until its environment variables are set, and is its own commi
 5. **Hydra bearer tokens on `/api/v3`.** Springboard's API calls the v3 survey and response routes as the
    signed-in person, with a Hydra access token it got in a jwt-bearer exchange. The token acts as the
    Formbricks user linked to its `sub`, so that person's own role decides. See "Hydra bearer tokens" below.
-6. **Source link, this file, and an image build** (`.github/workflows/springboard-image.yml`).
+6. **Hydra is the only token issuer.** `SPRINGBOARD_HYDRA_ONLY=1` retires Formbricks' own OAuth server: the
+   MCP authorization server, its dynamic client registration, consent screen and `/api/mcp`. See "Hydra is
+   the only token issuer" below.
+7. **Source link, this file, and an image build** (`.github/workflows/springboard-image.yml`).
 
-The MCP server at `/api/mcp` is untouched.
+The MCP server at `/api/mcp` is unchanged, and retired along with its OAuth server by `SPRINGBOARD_HYDRA_ONLY=1`.
 
 ## Environment variables
 
@@ -178,6 +181,24 @@ swaps its caller's token at Hydra (RFC 7523 jwt-bearer) for one whose audience i
 A token that passes becomes a session for the linked user, so Formbricks' membership and role checks and its
 audit log apply to that person. Offboarding removes the link, so a leaver's still-valid token stops at the
 lookup. Refusals are logged with their reason, never the token.
+
+## Hydra is the only token issuer
+
+Upstream 6.1 makes Formbricks an OAuth 2.1 authorization server for its MCP endpoint: Better Auth's `jwt()` and
+`oauthProvider()` plugins, open dynamic client registration, a consent screen, and refresh tokens good for 30
+days. Springboard's identity service is Hydra, so with `SPRINGBOARD_HYDRA_ONLY=1`:
+
+- `jwt()` and `oauthProvider()` are not registered, so Formbricks mints no access or refresh tokens, and any it
+  minted before no longer verify anywhere.
+- `proxy.ts` answers 404 for `/.well-known/oauth-authorization-server`, `/.well-known/openid-configuration`,
+  `/.well-known/oauth-protected-resource`, `/api/mcp`, `/account/authorize`,
+  `/account/settings/authorized-apps`, and Better Auth's `/api/auth/oauth2/*`, `/api/auth/admin/oauth2/*`,
+  `/api/auth/.well-known/*` and `/api/auth/jwks`.
+- `/api/auth/oauth2/callback/*` stays open: it is the staff sign-in callback.
+
+Better Auth stays as the dashboard's session layer; "Sign in with Springboard" is its `genericOAuth` plugin.
+Survey tools for an assistant go through Springboard's API and its MCP connector instead (Hydra bearer tokens,
+above). The `oauth*` tables are left in place, unused, so a later upstream migration still applies.
 
 ## Rebasing onto a new upstream tag
 

@@ -3,6 +3,7 @@ import {
   getDiscoveryUrl,
   getSpringboardEnvWarnings,
   parseHydraBearerConfig,
+  parseHydraOnly,
   parseList,
   parsePassConfig,
   parseRespondentConfig,
@@ -156,6 +157,15 @@ describe("Springboard config", () => {
     ]);
     expect(validateSpringboardEnv({ ...STAFF, SPRINGBOARD_HYDRA_BEARER: "yes" })).toEqual([
       "SPRINGBOARD_HYDRA_BEARER must be 1 or 0.",
+    ]);
+  });
+
+  test("Hydra-only is on for exactly 1", () => {
+    expect(parseHydraOnly({ SPRINGBOARD_HYDRA_ONLY: "1" })).toBe(true);
+    expect(parseHydraOnly({ SPRINGBOARD_HYDRA_ONLY: "0" })).toBe(false);
+    expect(parseHydraOnly({})).toBe(false);
+    expect(validateSpringboardEnv({ SPRINGBOARD_HYDRA_ONLY: "yes" })).toEqual([
+      "SPRINGBOARD_HYDRA_ONLY must be 1 or 0.",
     ]);
   });
 });
