@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   getDiscoveryUrl,
   getSpringboardEnvWarnings,
+  parseHydraBearerConfig,
   parseList,
   parsePassConfig,
   parseRespondentConfig,
@@ -140,5 +141,21 @@ describe("Springboard config", () => {
     expect(parseSingleWorkspace({ SPRINGBOARD_SINGLE_WORKSPACE: "1" })).toBe(true);
     expect(parseSingleWorkspace({ SPRINGBOARD_SINGLE_WORKSPACE: "0" })).toBe(false);
     expect(validateSpringboardEnv({ SPRINGBOARD_SINGLE_WORKSPACE: "yes" })).toHaveLength(1);
+  });
+
+  test("Hydra bearer tokens need the flag, the issuer and WEBAPP_URL", () => {
+    const on = { SPRINGBOARD_OIDC_ISSUER: "https://auth.springboard.vn/", SPRINGBOARD_HYDRA_BEARER: "1" };
+    expect(parseHydraBearerConfig(on, "https://forms.springboard.vn/")).toEqual({
+      issuer: "https://auth.springboard.vn",
+      audience: "https://forms.springboard.vn",
+    });
+    expect(parseHydraBearerConfig({ ...on, SPRINGBOARD_HYDRA_BEARER: "0" }, "https://f.example")).toBeNull();
+    expect(parseHydraBearerConfig(on, undefined)).toBeNull();
+    expect(validateSpringboardEnv({ SPRINGBOARD_HYDRA_BEARER: "1" })).toEqual([
+      "SPRINGBOARD_HYDRA_BEARER needs SPRINGBOARD_OIDC_ISSUER.",
+    ]);
+    expect(validateSpringboardEnv({ ...STAFF, SPRINGBOARD_HYDRA_BEARER: "yes" })).toEqual([
+      "SPRINGBOARD_HYDRA_BEARER must be 1 or 0.",
+    ]);
   });
 });
