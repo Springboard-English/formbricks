@@ -78,6 +78,39 @@ export const SPRINGBOARD_EXPORT_HEADERS = [
 ];
 
 /**
+ * The per-survey "Springboard staff only" setting, stored like the sign-in switch. It narrows sign-in:
+ * only an account whose type is one of the staff sign-in's `SPRINGBOARD_OIDC_STAFF_ACCOUNT_TYPES` may
+ * answer, so it means nothing unless sign-in is required too.
+ */
+export const SPRINGBOARD_STAFF_ONLY_METADATA_KEY = "springboardStaffOnly";
+
+export const isSpringboardStaffOnly = (survey: TSurveyLike): boolean =>
+  isSpringboardSignInRequired(survey) &&
+  (survey.metadata as Record<string, unknown>)[SPRINGBOARD_STAFF_ONLY_METADATA_KEY] === true;
+
+export const setSpringboardStaffOnly = <T extends { metadata?: unknown }>(
+  survey: T,
+  staffOnly: boolean
+): T => {
+  const current =
+    survey.metadata !== null && typeof survey.metadata === "object"
+      ? (survey.metadata as Record<string, unknown>)
+      : {};
+  const { [SPRINGBOARD_STAFF_ONLY_METADATA_KEY]: _previous, ...rest } = current;
+  return { ...survey, metadata: staffOnly ? { ...rest, [SPRINGBOARD_STAFF_ONLY_METADATA_KEY]: true } : rest };
+};
+
+/**
+ * Whether this account may answer the survey. Fails closed: a staff-only survey on an instance with no
+ * staff account types configured admits nobody.
+ */
+export const isRespondentAllowed = (
+  survey: TSurveyLike,
+  identity: { accountType: string },
+  staffAccountTypes: readonly string[]
+): boolean => !isSpringboardStaffOnly(survey) || staffAccountTypes.includes(identity.accountType);
+
+/**
  * Core's "Anonymize responses" toggle. On such a survey Springboard never records who answered, even
  * when sign-in is required: the sign-in then only decides who may answer.
  */

@@ -22,8 +22,14 @@ import {
   completeRespondentCallback,
   sanitizeReturnTo,
 } from "@/modules/springboard/lib/respondent-flow";
-import { isSpringboardSignInRequired } from "@/modules/springboard/lib/respondent-survey";
-import { getSpringboardRespondentConfig } from "@/modules/springboard/lib/runtime-config";
+import {
+  isRespondentAllowed,
+  isSpringboardSignInRequired,
+} from "@/modules/springboard/lib/respondent-survey";
+import {
+  getSpringboardRespondentConfig,
+  getSpringboardStaffAccountTypes,
+} from "@/modules/springboard/lib/runtime-config";
 
 /**
  * `GET /api/springboard/respondent/start?surveyId=…&returnTo=…` → Hydra (RESPONDENT client), and
@@ -128,6 +134,15 @@ export const handleRespondentCallback = async (request: Request): Promise<Respon
   } catch (error) {
     logger.error({ error, surveyId: flow.surveyId }, "Springboard respondent callback failed");
     result = { ok: false, error: "respondent_token_exchange_failed" };
+  }
+
+  // A "staff only" survey turns other accounts away here, before they answer; the response routes refuse
+  // them again on their own.
+  if (result.ok) {
+    const survey = await getSurvey(flow.surveyId);
+    if (survey && !isRespondentAllowed(survey, result.identity, getSpringboardStaffAccountTypes())) {
+      result = { ok: false, error: "respondent_not_staff" };
+    }
   }
 
   const response = redirectTo(result.ok ? flow.returnTo : withError(flow.returnTo, result.error));

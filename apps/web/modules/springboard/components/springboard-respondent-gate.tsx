@@ -35,7 +35,9 @@ export const SpringboardRespondentGate = ({
         <p className="mt-2 text-sm text-slate-600">{t("s.springboard_sign_in_description")}</p>
         {error && (
           <p role="alert" className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-            {t("s.springboard_sign_in_failed", { code: error })}
+            {error === "respondent_not_staff"
+              ? t("s.springboard_staff_only")
+              : t("s.springboard_sign_in_failed", { code: error })}
           </p>
         )}
         {startUrl ? (

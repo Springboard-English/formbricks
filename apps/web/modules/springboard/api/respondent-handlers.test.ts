@@ -15,7 +15,10 @@ vi.mock("@/lib/getPublicUrl", () => ({ getPublicDomain: () => "https://forms.spr
 vi.mock("@/lib/survey/service", () => ({ getSurvey: vi.fn() }));
 vi.mock("@/modules/auth/lib/auth-cookies", () => ({ USE_SECURE_COOKIES: true }));
 vi.mock("@/modules/core/rate-limit/helpers", () => ({ applyIPRateLimit: vi.fn() }));
-vi.mock("@/modules/springboard/lib/runtime-config", () => ({ getSpringboardRespondentConfig: vi.fn() }));
+vi.mock("@/modules/springboard/lib/runtime-config", () => ({
+  getSpringboardRespondentConfig: vi.fn(),
+  getSpringboardStaffAccountTypes: () => ["employee"],
+}));
 vi.mock("@/modules/springboard/lib/oidc", () => ({ getOidcProvider: vi.fn() }));
 vi.mock("@/modules/springboard/lib/respondent-flow", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/modules/springboard/lib/respondent-flow")>()),
@@ -138,6 +141,25 @@ describe("respondent callback", () => {
     const response = await handleRespondentCallback(request());
 
     expect(response.headers.get("location")).toContain("springboardError=respondent_invalid_token");
+    expect(
+      response.headers.getSetCookie().some((cookie) => cookie.startsWith("sb_respondent_survey1="))
+    ).toBe(false);
+  });
+
+  test("a staff-only survey turns a student away at sign-in, with no identity cookie", async () => {
+    vi.mocked(getSurvey).mockResolvedValue({
+      id: "survey1",
+      type: "link",
+      metadata: { springboardSignInRequired: true, springboardStaffOnly: true },
+    } as never);
+    vi.mocked(completeRespondentCallback).mockResolvedValue({
+      ok: true,
+      identity: { email: "student@gmail.com", emailVerified: false, sub: "sb-42", accountType: "student" },
+    });
+
+    const response = await handleRespondentCallback(request());
+
+    expect(response.headers.get("location")).toContain("springboardError=respondent_not_staff");
     expect(
       response.headers.getSetCookie().some((cookie) => cookie.startsWith("sb_respondent_survey1="))
     ).toBe(false);

@@ -9,10 +9,15 @@ import {
   RESPONDENT_PASS_FIELD,
   SPRINGBOARD_RESPONSE_KEYS,
   isIdentifyingContextKey,
+  isRespondentAllowed,
   isSpringboardAnonymous,
   isSpringboardSignInRequired,
 } from "./respondent-survey";
-import { getSpringboardPassConfig, getSpringboardRespondentConfig } from "./runtime-config";
+import {
+  getSpringboardPassConfig,
+  getSpringboardRespondentConfig,
+  getSpringboardStaffAccountTypes,
+} from "./runtime-config";
 
 /**
  * The trust boundary for Springboard respondent identity, applied by the public response routes
@@ -22,7 +27,8 @@ import { getSpringboardPassConfig, getSpringboardRespondentConfig } from "./runt
  * link survey) or from a respondent pass the API signed (an in-app survey), and nothing else: the
  * request body's values under the same keys are overwritten on create and dropped on update, and the
  * pass itself is never stored. A survey that requires sign-in answers 403 without either. With no
- * respondent client configured such a survey cannot be answered at all (fail closed).
+ * respondent client configured such a survey cannot be answered at all (fail closed). A "staff only"
+ * survey also answers 403 to a signed-in account that is not a staff account type.
  *
  * A pass counts on in-app surveys only and makes one response. Unless the survey is set to
  * `respondMultiple`, an account with a response on it is refused a second.
@@ -43,6 +49,9 @@ type TGateMeta = { url?: string } | undefined;
 
 const forbidden = (surveyId: string) =>
   responses.forbiddenResponse("Survey requires Sign in with Springboard", true, { surveyId });
+
+const notStaff = (surveyId: string) =>
+  responses.forbiddenResponse("Survey is for Springboard staff only", true, { surveyId });
 
 const readCookieIdentity = (surveyId: string, cookieHeader: string | null | undefined) => {
   const config = getSpringboardRespondentConfig();
@@ -121,6 +130,9 @@ export const enforceSpringboardRespondentGate = async ({
   const passIdentity = cookieIdentity || pass === undefined ? null : await readPassIdentity(survey, pass);
   const identity = cookieIdentity ?? passIdentity;
   if (signInRequired && !identity) return forbidden(survey.id);
+  if (identity && !isRespondentAllowed(survey, identity, getSpringboardStaffAccountTypes())) {
+    return notStaff(survey.id);
+  }
 
   if (isSpringboardAnonymous(survey)) {
     anonymize(responseData, meta);
@@ -160,6 +172,7 @@ export const enforceSpringboardRespondentGateOnUpdate = ({
 
   const identity = readCookieIdentity(survey.id, cookieHeader);
   if (!identity) return forbidden(survey.id);
+  if (!isRespondentAllowed(survey, identity, getSpringboardStaffAccountTypes())) return notStaff(survey.id);
   // An anonymous response carries no key to compare against; the cookie alone still has to be valid.
   if (!anonymous && existingResponseData[SPRINGBOARD_RESPONSE_KEYS.accountKey] !== identity.sub) {
     return forbidden(survey.id);
