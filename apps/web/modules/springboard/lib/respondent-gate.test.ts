@@ -6,11 +6,16 @@ import {
   enforceSpringboardRespondentGateOnUpdate,
 } from "./respondent-gate";
 import { hasRespondedToSurvey, spendRespondentPass } from "./respondent-once";
-import { getSpringboardPassConfig, getSpringboardRespondentConfig } from "./runtime-config";
+import {
+  getSpringboardPassConfig,
+  getSpringboardRespondentConfig,
+  getSpringboardStaffAccountTypes,
+} from "./runtime-config";
 
 vi.mock("./runtime-config", () => ({
   getSpringboardRespondentConfig: vi.fn(),
   getSpringboardPassConfig: vi.fn(),
+  getSpringboardStaffAccountTypes: vi.fn(),
 }));
 
 vi.mock("./respondent-once", () => ({
@@ -66,6 +71,7 @@ beforeEach(() => {
   vi.mocked(getSpringboardPassConfig).mockReturnValue({ publicKeyPem, issuer: ISSUER, audience: AUDIENCE });
   vi.mocked(spendRespondentPass).mockResolvedValue(true);
   vi.mocked(hasRespondedToSurvey).mockResolvedValue(false);
+  vi.mocked(getSpringboardStaffAccountTypes).mockReturnValue(["employee"]);
 });
 
 // A client-sent `verifiedEmail` never reaches the gate: the ingest contract drops it first (it is a
@@ -350,5 +356,51 @@ describe("response update gate (partial responses)", () => {
       cookieHeader: null,
     });
     expect(update).toEqual({ q2: "no" });
+  });
+});
+
+describe("staff-only survey", () => {
+  const staffOnly = { ...survey, metadata: { springboardSignInRequired: true, springboardStaffOnly: true } };
+  const staff = { ...identity, email: "a@springboard.vn", emailVerified: true, accountType: "employee" };
+  const staffCookie = cookieFor("survey1", signRespondentCookie(staff, "survey1", SECRET));
+
+  test("a signed-in student is refused on create and on update", async () => {
+    const data: Record<string, string> = { q1: "yes" };
+    const created = await enforceSpringboardRespondentGate({
+      survey: staffOnly,
+      responseData: data,
+      cookieHeader: cookieFor("survey1"),
+    });
+    expect(created?.status).toBe(403);
+    expect(
+      enforceSpringboardRespondentGateOnUpdate({
+        survey: staffOnly,
+        existingResponseData: { springboardAccountKey: "sb-42" },
+        updateData: { q2: "no" },
+        cookieHeader: cookieFor("survey1"),
+      })?.status
+    ).toBe(403);
+  });
+
+  test("a staff account answers and is stamped", async () => {
+    const data: Record<string, string> = { q1: "yes" };
+    expect(
+      await enforceSpringboardRespondentGate({
+        survey: staffOnly,
+        responseData: data,
+        cookieHeader: staffCookie,
+      })
+    ).toBeNull();
+    expect(data.springboardAccountType).toBe("employee");
+  });
+
+  test("fails closed when no staff account types are configured", async () => {
+    vi.mocked(getSpringboardStaffAccountTypes).mockReturnValue([]);
+    const response = await enforceSpringboardRespondentGate({
+      survey: staffOnly,
+      responseData: {},
+      cookieHeader: staffCookie,
+    });
+    expect(response?.status).toBe(403);
   });
 });

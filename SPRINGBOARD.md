@@ -131,6 +131,11 @@ PKCE, state and nonce; the id_token is verified against the JWKS, `iss`, `aud`, 
 callback sets a two-hour signed HttpOnly, Secure, SameSite=Lax cookie bound to that one survey, and returns to
 the survey with its original query string, so single-use links and hidden fields keep working.
 
+**Staff only.** Under the sign-in switch, "Springboard staff only" (`springboardStaffOnly: true` in
+`metadata`) admits only accounts whose `account_type` is in `SPRINGBOARD_OIDC_STAFF_ACCOUNT_TYPES`. Anyone
+else is turned away at the callback (`respondent_not_staff`, no cookie), and the response routes refuse them
+too. With that variable unset, a staff-only survey admits nobody.
+
 **In-app surveys: a respondent pass.** The app (Leap) calls Springboard's
 `POST /v2/users/me/respondent-pass` and sends the token as the embedded field `sb_pass`. The pass is RS256,
 lives ten minutes, and must carry `typ: respondent_pass`, a `jti`, the configured issuer and this instance's

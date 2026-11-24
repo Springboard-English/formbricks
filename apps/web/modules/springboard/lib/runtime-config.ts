@@ -7,6 +7,7 @@ import {
   type TSpringboardRespondentConfig,
   type TSpringboardStaffConfig,
   getSpringboardEnvWarnings,
+  parseList,
   parseOffboardSecret,
   parsePassConfig,
   parseRespondentConfig,
@@ -23,6 +24,10 @@ import {
 const raw = (): TSpringboardRawEnv => env;
 
 export const getSpringboardStaffConfig = (): TSpringboardStaffConfig | null => parseStaffConfig(raw());
+
+/** The staff sign-in's account types, also what a "staff only" survey admits. Lower-cased. */
+export const getSpringboardStaffAccountTypes = (): string[] =>
+  parseList(raw().SPRINGBOARD_OIDC_STAFF_ACCOUNT_TYPES);
 
 export const getSpringboardRespondentConfig = (): TSpringboardRespondentConfig | null =>
   parseRespondentConfig(raw());

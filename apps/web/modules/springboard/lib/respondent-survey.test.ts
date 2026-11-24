@@ -2,9 +2,12 @@ import { describe, expect, test } from "vitest";
 import {
   hasVerifiedRespondentEmail,
   isIdentifyingContextKey,
+  isRespondentAllowed,
   isSpringboardSignInRequired,
+  isSpringboardStaffOnly,
   recordsSpringboardIdentity,
   setSpringboardSignInRequired,
+  setSpringboardStaffOnly,
 } from "./respondent-survey";
 
 const passField = { field: { source: "ingested" }, link: { storageKey: "sb_pass" } };
@@ -77,5 +80,29 @@ describe("per-survey Springboard sign-in setting", () => {
     ["moteg0j6a8nvc5y4e4xck9po", false],
   ])("context key %s identifies a person: %s", (key, expected) => {
     expect(isIdentifyingContextKey(key)).toBe(expected);
+  });
+});
+
+describe("per-survey staff-only setting", () => {
+  const link = { type: "link", metadata: { springboardSignInRequired: true, linkPreview: "x" } };
+
+  test("round-trips in metadata and means nothing without sign-in", () => {
+    const on = setSpringboardStaffOnly(link, true);
+    expect(on.metadata).toEqual({
+      springboardSignInRequired: true,
+      linkPreview: "x",
+      springboardStaffOnly: true,
+    });
+    expect(isSpringboardStaffOnly(on)).toBe(true);
+    expect(setSpringboardStaffOnly(on, false).metadata).toEqual(link.metadata);
+    expect(isSpringboardStaffOnly({ type: "link", metadata: { springboardStaffOnly: true } })).toBe(false);
+  });
+
+  test("admits only staff account types, and nobody when none are configured", () => {
+    const on = setSpringboardStaffOnly(link, true);
+    expect(isRespondentAllowed(on, { accountType: "employee" }, ["employee"])).toBe(true);
+    expect(isRespondentAllowed(on, { accountType: "student" }, ["employee"])).toBe(false);
+    expect(isRespondentAllowed(on, { accountType: "employee" }, [])).toBe(false);
+    expect(isRespondentAllowed(link, { accountType: "student" }, ["employee"])).toBe(true);
   });
 });

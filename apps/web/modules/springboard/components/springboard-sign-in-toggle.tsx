@@ -4,7 +4,9 @@ import { useTranslation } from "react-i18next";
 import { TSurvey } from "@formbricks/types/surveys/types";
 import {
   isSpringboardSignInRequired,
+  isSpringboardStaffOnly,
   setSpringboardSignInRequired,
+  setSpringboardStaffOnly,
 } from "@/modules/springboard/lib/respondent-survey";
 import { AdvancedOptionToggle } from "@/modules/ui/components/advanced-option-toggle";
 
@@ -16,7 +18,8 @@ interface SpringboardSignInToggleProps {
 }
 
 /**
- * The survey-editor switch for "Sign in with Springboard to answer". Hidden when the instance has no
+ * The survey-editor switches for "Sign in with Springboard to answer" and, under it, "Springboard staff
+ * only". Hidden when the instance has no
  * respondent client, unless the survey already has it on, so it can still be switched off.
  */
 export const SpringboardSignInToggle = ({
@@ -29,14 +32,27 @@ export const SpringboardSignInToggle = ({
   if (!isAvailable && !isChecked) return null;
 
   return (
-    <AdvancedOptionToggle
-      htmlId="springboardSignInRequired"
-      isChecked={isChecked}
-      onToggle={() =>
-        setLocalSurvey((prev) => setSpringboardSignInRequired(prev, !isSpringboardSignInRequired(prev)))
-      }
-      title={t("workspace.surveys.edit.springboard_sign_in_required")}
-      description={t("workspace.surveys.edit.springboard_sign_in_required_description")}
-    />
+    <>
+      <AdvancedOptionToggle
+        htmlId="springboardSignInRequired"
+        isChecked={isChecked}
+        onToggle={() =>
+          setLocalSurvey((prev) => setSpringboardSignInRequired(prev, !isSpringboardSignInRequired(prev)))
+        }
+        title={t("workspace.surveys.edit.springboard_sign_in_required")}
+        description={t("workspace.surveys.edit.springboard_sign_in_required_description")}
+      />
+      {isChecked && (
+        <AdvancedOptionToggle
+          htmlId="springboardStaffOnly"
+          isChecked={isSpringboardStaffOnly(localSurvey)}
+          onToggle={() =>
+            setLocalSurvey((prev) => setSpringboardStaffOnly(prev, !isSpringboardStaffOnly(prev)))
+          }
+          title={t("workspace.surveys.edit.springboard_staff_only")}
+          description={t("workspace.surveys.edit.springboard_staff_only_description")}
+        />
+      )}
+    </>
   );
 };

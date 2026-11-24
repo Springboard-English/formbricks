@@ -20,7 +20,8 @@ export type TRespondentFlowError =
   | "respondent_invalid_state"
   | "respondent_idp_error"
   | "respondent_token_exchange_failed"
-  | "respondent_invalid_token";
+  | "respondent_invalid_token"
+  | "respondent_not_staff";
 
 const randomToken = (): string => randomBytes(32).toString("base64url");
 
